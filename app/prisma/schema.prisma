@@ -1,0 +1,350 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/citaplanner_mvp/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Multi-tenant architecture models
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  MANAGER
+  PROFESSIONAL
+  RECEPTIONIST
+  CLIENT
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  PENDING
+}
+
+// Tenant (Empresa)
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  country     String   @default("México")
+  timezone    String   @default("America/Mexico_City")
+  currency    String   @default("MXN")
+  logo        String?
+  subdomain   String?  @unique  // Para URLs personalizadas
+  primaryColor String  @default("#3B82F6")
+  secondaryColor String @default("#EF4444")
+  isActive    Boolean  @default(true)
+  
+  // Configuraciones del portal de reservas
+  allowOnlineBooking Boolean @default(true)
+  requireClientPhone Boolean @default(true)
+  requireClientEmail Boolean @default(false)
+  bookingAdvanceDays Int     @default(30)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  branches    Branch[]
+  users       User[]
+  services    Service[]
+  clients     Client[]
+  appointments Appointment[]
+  payments    Payment[]
+  clientUsers ClientUser[]
+  
+  @@map("tenants")
+}
+
+// Sucursal
+model Branch {
+  id          String   @id @default(cuid())
+  name        String
+  address     String?
+  phone       String?
+  email       String?
+  isActive    Boolean  @default(true)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  users       User[]
+  appointments Appointment[]
+  payments    Payment[]
+  workingHours WorkingHours[]
+  
+  @@map("branches")
+}
+
+// Usuario del sistema
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String?
+  firstName   String
+  lastName    String
+  phone       String?
+  avatar      String?
+  role        UserRole  @default(PROFESSIONAL)
+  isActive    Boolean   @default(true)
+  
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  branchId    String?
+  branch      Branch?   @relation(fields: [branchId], references: [id])
+  
+  emailVerified DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // NextAuth relations
+  accounts    Account[]
+  sessions    Session[]
+  
+  // Business relations
+  appointments Appointment[]
+  payments    Payment[]
+  workingHours WorkingHours[]
+  serviceUsers ServiceUser[]
+  
+  @@map("users")
+}
+
+// Servicios ofrecidos
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  duration    Int      // en minutos
+  price       Float
+  isActive    Boolean  @default(true)
+  color       String   @default("#3B82F6")
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  appointments Appointment[]
+  serviceUsers ServiceUser[]
+  
+  @@map("services")
+}
+
+// Relación muchos a muchos entre servicios y profesionales
+model ServiceUser {
+  id          String   @id @default(cuid())
+  
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  commission  Float    @default(0) // Porcentaje de comisión para este servicio
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([serviceId, userId])
+  @@map("service_users")
+}
+
+// Clientes
+model Client {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String
+  address     String?
+  birthday    DateTime?
+  notes       String?
+  isActive    Boolean  @default(true)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  appointments Appointment[]
+  payments    Payment[]
+  clientUser  ClientUser?
+  
+  @@unique([phone, tenantId])
+  @@map("clients")
+}
+
+// Citas
+model Appointment {
+  id          String            @id @default(cuid())
+  startTime   DateTime
+  endTime     DateTime
+  status      AppointmentStatus @default(PENDING)
+  notes       String?
+  isOnline    Boolean           @default(false) // True si fue creada por el portal online
+  
+  tenantId    String
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  branchId    String
+  branch      Branch            @relation(fields: [branchId], references: [id])
+  
+  clientId    String
+  client      Client            @relation(fields: [clientId], references: [id])
+  
+  serviceId   String
+  service     Service           @relation(fields: [serviceId], references: [id])
+  
+  userId      String            // Profesional asignado
+  user        User              @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Relations
+  payments    Payment[]
+  
+  @@map("appointments")
+}
+
+// Pagos
+model Payment {
+  id              String        @id @default(cuid())
+  amount          Float
+  paymentMethod   PaymentMethod @default(CASH)
+  status          PaymentStatus @default(PAID)
+  notes           String?
+  
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  branchId        String
+  branch          Branch        @relation(fields: [branchId], references: [id])
+  
+  clientId        String
+  client          Client        @relation(fields: [clientId], references: [id])
+  
+  appointmentId   String?
+  appointment     Appointment?  @relation(fields: [appointmentId], references: [id])
+  
+  userId          String        // Usuario que registró el pago
+  user            User          @relation(fields: [userId], references: [id])
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@map("payments")
+}
+
+// Horarios laborales
+model WorkingHours {
+  id          String   @id @default(cuid())
+  dayOfWeek   Int      // 0 = Domingo, 1 = Lunes, etc.
+  startTime   String   // Formato HH:mm
+  endTime     String   // Formato HH:mm
+  isActive    Boolean  @default(true)
+  
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  userId      String?  // Si es null, aplica para toda la sucursal
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("working_hours")
+}
+
+// Usuario cliente (para portal de cliente)
+model ClientUser {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String?
+  firstName   String
+  lastName    String
+  phone       String
+  avatar      String?
+  isActive    Boolean   @default(true)
+  
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  clientId    String?   @unique
+  client      Client?   @relation(fields: [clientId], references: [id])
+  
+  emailVerified DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("client_users")
+}
