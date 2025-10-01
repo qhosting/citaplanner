@@ -1,182 +1,197 @@
 
-# CitaPlanner MVP
+# CitaPlanner 📅
 
-**Plataforma SaaS integral para la gestión de negocios basados en citas**
+Sistema de gestión de citas y planificación desarrollado con Next.js, Prisma y PostgreSQL.
 
-CitaPlanner es una solución completa que permite a los negocios de servicios (salones de belleza, spas, clínicas, etc.) gestionar eficientemente sus citas, clientes, servicios e inventario.
+## 🚀 Características
 
-## 🚀 Características Principales
+- Gestión completa de citas
+- Autenticación de usuarios con NextAuth
+- Base de datos PostgreSQL persistente
+- Deploy fácil en Easypanel
+- Interfaz moderna y responsive
 
-### ✅ Módulos Completados:
-- **📅 Gestión de Citas** - Sistema completo de agendamiento con estados y seguimiento
-- **👥 Gestión de Clientes** - Base de datos de clientes con historial completo
-- **📦 Inventario Completo** - Control total de productos, stock, alertas y reabastecimiento
-- **🏢 Multi-tenant** - Soporte para múltiples empresas en una sola instalación
-- **🔐 Sistema de Autenticación** - NextAuth.js con roles y permisos
-- **📊 Dashboard Analítico** - Métricas y reportes en tiempo real
-- **💳 Procesamiento de Pagos** - Integración con OpenPay para México
-- **📱 Notificaciones** - SMS y WhatsApp para recordatorios
-- **🎨 Interfaz Moderna** - Diseño responsive con Tailwind CSS
+## 📋 Requisitos previos
 
-### 🛠️ Tecnologías Utilizadas:
-- **Frontend:** Next.js 14, React 18, TypeScript
-- **Styling:** Tailwind CSS, Shadcn/ui Components
-- **Backend:** Next.js API Routes, Prisma ORM
-- **Base de Datos:** PostgreSQL
-- **Autenticación:** NextAuth.js
-- **Pagos:** OpenPay Integration
-- **Forms:** React Hook Form + Zod validation
-- **Estado:** Zustand
-- **Notificaciones:** React Hot Toast
+- Node.js 18 o superior
+- PostgreSQL 14 o superior (para desarrollo local)
+- Cuenta en Easypanel (para producción)
+- Base de datos PostgreSQL externa (Neon, Supabase, Railway, etc.)
 
-## 🏗️ Arquitectura Multi-tenant
+## 🛠️ Instalación y desarrollo local
 
-El sistema está diseñado para soportar múltiples empresas:
-- Cada empresa (tenant) tiene sus propios datos aislados
-- Usuarios con diferentes roles: SUPERADMIN, ADMIN, MANAGER, PROFESSIONAL, RECEPTIONIST, CLIENT
-- Gestión de sucursales múltiples por empresa
-- Configuraciones personalizables por tenant
+### 1. Clonar el repositorio
 
-## 📦 Instalación
-
-### Prerrequisitos:
-- Node.js 18+ 
-- PostgreSQL
-- Yarn
-
-### Pasos:
-
-1. **Clonar el repositorio:**
 ```bash
-git clone <tu-repo-url>
-cd citaplanner_mvp
+git clone https://github.com/tu-usuario/citaplanner.git
+cd citaplanner
 ```
 
-2. **Instalar dependencias:**
+### 2. Instalar dependencias
+
 ```bash
 cd app
 yarn install
 ```
 
-3. **Configurar variables de entorno:**
-```bash
-# Copiar archivo de ejemplo
-cp .env.example .env
+### 3. Configurar variables de entorno
 
-# Configurar las siguientes variables:
-DATABASE_URL="postgresql://user:password@localhost:5432/citaplanner"
+Crea un archivo `.env` en la carpeta `app/`:
+
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/citaplanner"
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="tu-secret-key"
-
-# Para OpenPay (opcional):
-OPENPAY_ID="tu-merchant-id"
-OPENPAY_PRIVATE_KEY="tu-private-key"
-OPENPAY_PUBLIC_KEY="tu-public-key"
+NEXTAUTH_SECRET="tu-secret-generado"
+JWT_SECRET="tu-jwt-secret-generado"
 ```
 
-4. **Configurar la base de datos:**
+Para generar los secrets:
 ```bash
-# Generar Prisma Client
-yarn prisma generate
-
-# Ejecutar migraciones
-yarn prisma db push
-
-# Sembrar datos de prueba (opcional)
-yarn prisma db seed
+openssl rand -base64 32
 ```
 
-5. **Iniciar el servidor de desarrollo:**
+### 4. Iniciar base de datos local con Docker
+
+```bash
+# Desde la raíz del proyecto
+docker-compose up -d
+```
+
+Esto iniciará PostgreSQL en `localhost:5432`.
+
+### 5. Ejecutar migraciones
+
+```bash
+cd app
+npx prisma generate
+npx prisma db push
+npx prisma db seed  # Opcional: datos de prueba
+```
+
+### 6. Iniciar servidor de desarrollo
+
 ```bash
 yarn dev
 ```
 
-La aplicación estará disponible en `http://localhost:3000`
+La aplicación estará disponible en `http://localhost:3000`.
 
-## 🔧 Scripts Disponibles
+## 🌐 Deploy en producción (Easypanel)
+
+### Opción recomendada: Base de datos externa
+
+Para evitar pérdida de datos en cada deploy, usa una base de datos PostgreSQL externa.
+
+**📖 [Guía completa de configuración de base de datos externa](docs/external-database-setup.md)**
+
+### Pasos rápidos:
+
+1. **Crear base de datos externa** (recomendado: [Neon](https://neon.tech) o [Supabase](https://supabase.com))
+
+2. **Configurar variables de entorno en Easypanel**:
+   - `DATABASE_URL`: Tu cadena de conexión PostgreSQL
+   - `NEXTAUTH_URL`: URL de tu aplicación
+   - `NEXTAUTH_SECRET`: Secret generado con `openssl rand -base64 32`
+   - `JWT_SECRET`: Secret generado con `openssl rand -base64 32`
+   - `NODE_ENV`: `production`
+   - `PORT`: `3000`
+
+3. **Conectar repositorio GitHub** en Easypanel
+
+4. **Seleccionar `docker-compose.easypanel.yml`** como archivo de configuración
+
+5. **Deploy** - Las migraciones se ejecutarán automáticamente
+
+### Proveedores de base de datos recomendados:
+
+| Proveedor | Plan Gratuito | Ventajas |
+|-----------|---------------|----------|
+| [Neon](https://neon.tech) | 512 MB | ✅ No requiere whitelist de IPs, serverless |
+| [Supabase](https://supabase.com) | 500 MB | ✅ Incluye auth y storage, dashboard completo |
+| [Railway](https://railway.app) | $5/mes crédito | ✅ Muy fácil de usar, métricas en tiempo real |
+| [Render](https://render.com) | 90 días retención | ✅ Backups automáticos, SSL incluido |
+
+Ver [documentación completa](docs/external-database-setup.md) para más detalles.
+
+## 📁 Estructura del proyecto
+
+```
+citaplanner/
+├── app/                          # Aplicación Next.js
+│   ├── app/                      # App Router de Next.js
+│   ├── components/               # Componentes React
+│   ├── lib/                      # Utilidades y configuración
+│   ├── prisma/                   # Schema y migraciones de Prisma
+│   ├── public/                   # Archivos estáticos
+│   └── package.json
+├── docs/                         # Documentación
+│   └── external-database-setup.md
+├── docker-compose.yml            # Para desarrollo local
+├── docker-compose.easypanel.yml  # Para producción en Easypanel
+├── Dockerfile                    # Imagen de producción
+├── start.sh                      # Script de inicio
+└── README.md
+```
+
+## 🔧 Scripts disponibles
 
 ```bash
 # Desarrollo
-yarn dev
-
-# Build de producción
-yarn build
-
-# Iniciar en producción
-yarn start
-
-# Linting
-yarn lint
+yarn dev              # Inicia servidor de desarrollo
+yarn build            # Construye para producción
+yarn start            # Inicia servidor de producción
 
 # Base de datos
-yarn prisma studio      # Interfaz visual de la BD
-yarn prisma db push     # Aplicar cambios del schema
-yarn prisma generate    # Generar cliente
+npx prisma generate   # Genera cliente Prisma
+npx prisma db push    # Sincroniza esquema con BD
+npx prisma db seed    # Ejecuta seed de datos
+npx prisma studio     # Abre interfaz visual de BD
+
+# Docker
+docker-compose up -d              # Inicia servicios (desarrollo)
+docker-compose down               # Detiene servicios
+docker-compose logs -f app        # Ver logs
 ```
 
-## 📁 Estructura del Proyecto
+## 🐛 Solución de problemas
 
+### La aplicación no se conecta a la base de datos
+
+1. Verifica que `DATABASE_URL` esté correctamente configurada
+2. Verifica que la base de datos esté accesible
+3. Si usas SSL, agrega `?sslmode=require` al final de la URL
+4. Revisa los logs en Easypanel
+
+### Los datos se pierden después de cada deploy
+
+Esto ocurre si usas una base de datos local en el contenedor. **Solución**: Configura una base de datos externa siguiendo la [guía de configuración](docs/external-database-setup.md).
+
+### Error "Prisma Client not found"
+
+```bash
+# Regenera el cliente Prisma
+npx prisma generate
 ```
-app/
-├── app/                    # App Router (Next.js 14)
-│   ├── admin/             # Panel de administración
-│   ├── api/               # API Routes
-│   ├── auth/              # Páginas de autenticación
-│   ├── dashboard/         # Dashboard principal
-│   └── book/              # Portal de reservas público
-├── components/            # Componentes reutilizables
-│   ├── ui/                # Componentes base (Shadcn)
-│   ├── modals/            # Modales del sistema
-│   └── charts/            # Gráficos y visualizaciones
-├── lib/                   # Utilidades y configuraciones
-├── prisma/                # Schema y migraciones de BD
-└── public/                # Archivos estáticos
+
+### Error de migraciones
+
+```bash
+# Resetea y sincroniza el esquema
+npx prisma db push --force-reset --accept-data-loss
 ```
 
-## 🎯 Funcionalidades por Rol
+⚠️ **Advertencia**: Esto borrará todos los datos. Úsalo solo en desarrollo.
 
-### Super Administrador
-- Gestión de tenants (empresas)
-- Configuración global del sistema
-- Métricas generales
+## 📚 Documentación adicional
 
-### Administrador de Empresa
-- Gestión completa de la empresa
-- Configuración de sucursales
-- Gestión de personal y servicios
-- Reportes y análisis
-- **Inventario completo con alertas de stock**
+- [Configuración de base de datos externa](docs/external-database-setup.md)
+- [Documentación de Prisma](https://www.prisma.io/docs)
+- [Documentación de Next.js](https://nextjs.org/docs)
+- [Documentación de NextAuth](https://next-auth.js.org)
 
-### Manager/Profesional
-- Gestión de citas propias
-- Ver clientes asignados
-- Actualizar servicios
+## 🤝 Contribuir
 
-### Recepcionista
-- Gestión de citas de la sucursal
-- Registrar pagos
-- Gestión básica de clientes
-
-## 💡 Funcionalidades Destacadas del Inventario
-
-- ✅ **Modal completo** con 3 modos: Crear, Editar, Reabastecer
-- ✅ **Generación automática de SKU**
-- ✅ **Cálculo de márgenes de ganancia**
-- ✅ **Alertas de stock bajo** con código de colores
-- ✅ **Filtros avanzados** por categoría y estado
-- ✅ **Reabastecimiento masivo** inteligente
-- ✅ **Dashboard con estadísticas** completas
-
-## 🔄 Próximas Características
-
-- [ ] Sistema de horarios avanzado
-- [ ] Integración con calendarios externos
-- [ ] App móvil (React Native)
-- [ ] Sistema de fidelización de clientes
-- [ ] Reportes avanzados con IA
-- [ ] Integración con más pasarelas de pago
-
-## 🤝 Contribución
+Las contribuciones son bienvenidas. Por favor:
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
@@ -184,17 +199,22 @@ app/
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📄 Licencia
+## 📝 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
-## 🆘 Soporte
+## 👥 Autores
 
-Para soporte técnico o consultas:
-- 📧 Email: soporte@citaplanner.com
-- 📚 Documentación: [docs.citaplanner.com](https://docs.citaplanner.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/tu-usuario/citaplanner-mvp/issues)
+- Tu Nombre - [@tu-usuario](https://github.com/tu-usuario)
+
+## 🙏 Agradecimientos
+
+- Next.js team
+- Prisma team
+- Easypanel
+- Comunidad open source
 
 ---
 
-**Desarrollado con ❤️ para revolucionar la gestión de citas en México**
+**¿Necesitas ayuda?** Abre un [issue](https://github.com/tu-usuario/citaplanner/issues) en GitHub.
+
