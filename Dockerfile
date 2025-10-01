@@ -21,6 +21,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY app/ .
+COPY public/ ./public/
 
 # Generate Prisma client with complete runtime
 RUN npx prisma generate --generator client
