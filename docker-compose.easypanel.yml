@@ -1,23 +1,114 @@
-
 version: '3.8'
 
 services:
+  # ============================================
+  # PostgreSQL Database Service - LOCAL
+  # ============================================
+  # Base de datos PostgreSQL local con almacenamiento persistente
+  # Los datos se guardan en ./data/postgres en el servidor
+  postgres:
+    image: postgres:16-alpine
+    container_name: citaplanner-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      POSTGRES_DB: citaplanner
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      # Volumen persistente local - los datos NO se pierden al redeploy
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - citaplanner-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # CitaPlanner Application Service
+  # ============================================
   app:
     build: 
       context: .
       dockerfile: Dockerfile
+    container_name: citaplanner-app
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      # Database Configuration
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-changeme123}@postgres:5432/citaplanner?sslmode=disable
+      
+      # NextAuth Configuration
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET}
+      
+      # Node Environment
       - NODE_ENV=production
       - PORT=3000
+      
+      # OpenPay Configuration (opcional)
+      - OPENPAY_MERCHANT_ID=${OPENPAY_MERCHANT_ID:-}
+      - OPENPAY_PRIVATE_KEY=${OPENPAY_PRIVATE_KEY:-}
+      - OPENPAY_PUBLIC_KEY=${OPENPAY_PUBLIC_KEY:-}
+      - OPENPAY_API_KEY=${OPENPAY_API_KEY:-}
+      - OPENPAY_PRODUCTION=${OPENPAY_PRODUCTION:-false}
+      
+      # Twilio Configuration (opcional)
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
+      
+      # Email/SMTP Configuration (opcional)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - citaplanner-network
 
 networks:
   citaplanner-network:
     driver: bridge
+
+# ============================================
+# NOTAS IMPORTANTES
+# ============================================
+#
+# 1. ALMACENAMIENTO PERSISTENTE:
+#    - Los datos de PostgreSQL se guardan en ./data/postgres
+#    - Este directorio debe tener permisos correctos (chown 999:999)
+#    - Los datos persisten entre reinicios y redeploys
+#
+# 2. CONFIGURACIÓN EN EASYPANEL:
+#    - Crea las variables de entorno en la sección Environment
+#    - POSTGRES_PASSWORD: Contraseña segura para PostgreSQL
+#    - NEXTAUTH_SECRET: openssl rand -base64 32
+#    - JWT_SECRET: openssl rand -base64 32
+#    - NEXTAUTH_URL: URL de tu aplicación
+#
+# 3. PRIMERA VEZ:
+#    - Las migraciones se ejecutan automáticamente en start.sh
+#    - El seed de datos se ejecuta si la base está vacía
+#
+# 4. BACKUPS:
+#    - Backup: docker exec citaplanner-db pg_dump -U postgres citaplanner > backup.sql
+#    - Restore: docker exec -i citaplanner-db psql -U postgres citaplanner < backup.sql
+#
+# 5. SEGURIDAD:
+#    - Cambia POSTGRES_PASSWORD por una contraseña segura
+#    - No expongas el puerto 5432 en producción (quita ports: si no necesitas acceso externo)
+#    - Usa secrets de Docker en producción si es posible
+#
