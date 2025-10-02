@@ -7,6 +7,11 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Iniciando seed...')
 
+  // ELIMINAR TODOS LOS USUARIOS EXISTENTES
+  console.log('🗑️  Eliminando usuarios existentes...')
+  await prisma.user.deleteMany({})
+  console.log('✅ Usuarios eliminados')
+
   // Crear tenant de prueba
   const tenant = await prisma.tenant.create({
     data: {
@@ -34,18 +39,18 @@ async function main() {
 
   console.log('✅ Sucursal creada:', branch.name)
 
-  // Hashear contraseñas
-  const adminPassword = await bcrypt.hash('johndoe123', 10)
+  // Hashear contraseñas para los nuevos usuarios
+  const adminPassword = await bcrypt.hash('admin123', 10)
   const managerPassword = await bcrypt.hash('manager123', 10)
   const professionalPassword = await bcrypt.hash('prof123', 10)
 
-  // Crear usuarios
+  // Crear los 5 nuevos usuarios con credenciales en español
   const adminUser = await prisma.user.create({
     data: {
-      email: 'john@doe.com',
+      email: 'admin@citaplanner.com',
       password: adminPassword,
-      firstName: 'John',
-      lastName: 'Doe',
+      firstName: 'Administrador',
+      lastName: 'Principal',
       role: 'ADMIN',
       phone: '+52 55 1111 1111',
       tenantId: tenant.id,
@@ -55,10 +60,10 @@ async function main() {
 
   const managerUser = await prisma.user.create({
     data: {
-      email: 'maria@bellavita.com',
+      email: 'manager@citaplanner.com',
       password: managerPassword,
-      firstName: 'María',
-      lastName: 'González',
+      firstName: 'Gerente',
+      lastName: 'de Sucursal',
       role: 'MANAGER',
       phone: '+52 55 2222 2222',
       tenantId: tenant.id,
@@ -68,10 +73,10 @@ async function main() {
 
   const professional1 = await prisma.user.create({
     data: {
-      email: 'ana@bellavita.com',
+      email: 'pro1@citaplanner.com',
       password: professionalPassword,
-      firstName: 'Ana',
-      lastName: 'Rodríguez',
+      firstName: 'Estilista',
+      lastName: 'Senior',
       role: 'PROFESSIONAL',
       phone: '+52 55 3333 3333',
       tenantId: tenant.id,
@@ -81,10 +86,10 @@ async function main() {
 
   const professional2 = await prisma.user.create({
     data: {
-      email: 'carlos@bellavita.com',
+      email: 'pro2@citaplanner.com',
       password: professionalPassword,
-      firstName: 'Carlos',
-      lastName: 'López',
+      firstName: 'Barbero',
+      lastName: 'Profesional',
       role: 'PROFESSIONAL',
       phone: '+52 55 4444 4444',
       tenantId: tenant.id,
@@ -94,10 +99,10 @@ async function main() {
 
   const receptionist = await prisma.user.create({
     data: {
-      email: 'lucia@bellavita.com',
+      email: 'recepcionista@citaplanner.com',
       password: professionalPassword,
-      firstName: 'Lucía',
-      lastName: 'Martínez',
+      firstName: 'Recepcionista',
+      lastName: 'Principal',
       role: 'RECEPTIONIST',
       phone: '+52 55 5555 5555',
       tenantId: tenant.id,
@@ -175,7 +180,7 @@ async function main() {
 
   // Asignar servicios a profesionales
   await Promise.all([
-    // Ana - Especialista en faciales y cuidado de la piel
+    // Estilista Senior - Especialista en faciales y cuidado de la piel
     prisma.serviceUser.create({
       data: {
         serviceId: services[0].id, // Facial Hidratante
@@ -191,7 +196,7 @@ async function main() {
       }
     }),
     
-    // Carlos - Especialista en masajes
+    // Barbero - Especialista en masajes
     prisma.serviceUser.create({
       data: {
         serviceId: services[1].id, // Masaje Relajante
@@ -207,7 +212,7 @@ async function main() {
       }
     }),
     
-    // Ana también hace manicure
+    // Estilista Senior también hace manicure
     prisma.serviceUser.create({
       data: {
         serviceId: services[2].id, // Manicure y Pedicure
@@ -216,7 +221,7 @@ async function main() {
       }
     }),
     
-    // Carlos también hace cortes
+    // Barbero también hace cortes
     prisma.serviceUser.create({
       data: {
         serviceId: services[3].id, // Corte de Cabello
@@ -450,11 +455,11 @@ async function main() {
   console.log(`   • ${appointments.length} Citas`)
   console.log(`   • ${payments.length} Pagos`)
   console.log('\n🔑 Credenciales de acceso:')
-  console.log('   Admin: john@doe.com / johndoe123')
-  console.log('   Manager: maria@bellavita.com / manager123')
-  console.log('   Profesional 1: ana@bellavita.com / prof123')
-  console.log('   Profesional 2: carlos@bellavita.com / prof123')
-  console.log('   Recepcionista: lucia@bellavita.com / prof123')
+  console.log('   Admin: admin@citaplanner.com / admin123')
+  console.log('   Manager: manager@citaplanner.com / manager123')
+  console.log('   Profesional 1: pro1@citaplanner.com / prof123')
+  console.log('   Profesional 2: pro2@citaplanner.com / prof123')
+  console.log('   Recepcionista: recepcionista@citaplanner.com / prof123')
 }
 
 main()
