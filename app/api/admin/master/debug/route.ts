@@ -1,11 +1,25 @@
 /**
  * Ruta de debug temporal para verificar configuración de MASTER_PASSWORD_HASH
- * IMPORTANTE: Eliminar después de resolver el problema
+ * IMPORTANTE: Solo funciona si ENABLE_MASTER_DEBUG está configurado como 'true' o '1'
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
+  // Verificar si el debug está habilitado
+  const debugEnabled = process.env.ENABLE_MASTER_DEBUG === 'true' || process.env.ENABLE_MASTER_DEBUG === '1'
+  
+  if (!debugEnabled) {
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Debug endpoint is disabled',
+        message: 'Set ENABLE_MASTER_DEBUG=true or ENABLE_MASTER_DEBUG=1 to enable this endpoint'
+      },
+      { status: 404 }
+    )
+  }
+
   try {
     const masterPasswordHash = process.env.MASTER_PASSWORD_HASH
     

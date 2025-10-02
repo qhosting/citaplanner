@@ -7,13 +7,20 @@
 import bcrypt from 'bcryptjs'
 
 /**
+ * Verifica si el debug está habilitado mediante variable de entorno
+ */
+const isDebugEnabled = (): boolean => {
+  return process.env.ENABLE_MASTER_DEBUG === 'true' || process.env.ENABLE_MASTER_DEBUG === '1'
+}
+
+/**
  * Verifica si el master password proporcionado es correcto
  */
 export async function verifyMasterPassword(password: string): Promise<boolean> {
   const masterPasswordHash = process.env.MASTER_PASSWORD_HASH
   
-  // Debug logging (solo en desarrollo)
-  if (process.env.NODE_ENV === 'development') {
+  // Debug logging (solo si ENABLE_MASTER_DEBUG está habilitado)
+  if (isDebugEnabled()) {
     console.log('[DEBUG] Master Auth - Verificando password')
     console.log('[DEBUG] MASTER_PASSWORD_HASH presente:', !!masterPasswordHash)
     if (masterPasswordHash) {
@@ -37,7 +44,7 @@ export async function verifyMasterPassword(password: string): Promise<boolean> {
   try {
     const isValid = await bcrypt.compare(password, masterPasswordHash)
     
-    if (process.env.NODE_ENV === 'development') {
+    if (isDebugEnabled()) {
       console.log('[DEBUG] Resultado de verificación:', isValid)
     }
     
@@ -64,9 +71,11 @@ export async function generateMasterPasswordHash(password: string): Promise<stri
   // Usar 12 rounds es un buen balance entre seguridad y performance
   const hash = await bcrypt.hash(password, 12)
   
-  console.log('[INFO] Hash generado exitosamente')
-  console.log('[INFO] Prefijo del hash:', hash.substring(0, 7))
-  console.log('[INFO] Este hash es compatible con bcryptjs')
+  if (isDebugEnabled()) {
+    console.log('[INFO] Hash generado exitosamente')
+    console.log('[INFO] Prefijo del hash:', hash.substring(0, 7))
+    console.log('[INFO] Este hash es compatible con bcryptjs')
+  }
   
   return hash
 }
