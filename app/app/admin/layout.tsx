@@ -2,7 +2,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { redirect, usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -13,6 +13,15 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { data: session, status } = useSession()
+  const pathname = usePathname()
+
+  // Excluir /admin/master de la protección de autenticación
+  const isMasterAdminRoute = pathname === '/admin/master'
+
+  if (isMasterAdminRoute) {
+    // Para /admin/master, renderizar sin protección de sesión ni sidebar
+    return <>{children}</>
+  }
 
   if (status === 'loading') {
     return (
