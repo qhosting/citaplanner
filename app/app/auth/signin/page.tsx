@@ -134,17 +134,6 @@ export default function SignInPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Demo credentials */}
-        <Card className="bg-amber-50 border-amber-200">
-          <CardContent className="pt-6">
-            <p className="text-sm text-amber-800 text-center">
-              <span className="font-medium">Cuenta de prueba:</span><br />
-              Email: john@doe.com<br />
-              Contraseña: johndoe123
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
