@@ -40,6 +40,12 @@ export async function GET(request: NextRequest) {
       allEnvVars: Object.keys(process.env).filter(key => 
         key.includes('MASTER') || key.includes('PASSWORD') || key.includes('HASH')
       ),
+      // Información de versión
+      version: {
+        appVersion: process.env.APP_VERSION || 'unknown',
+        commitSha: process.env.GIT_COMMIT_SHA || 'unknown',
+        buildDate: process.env.BUILD_DATE || 'unknown',
+      }
     }
 
     // Advertencia de seguridad
