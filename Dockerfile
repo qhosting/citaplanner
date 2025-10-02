@@ -18,6 +18,10 @@ RUN --mount=type=cache,target=/app/.yarn-cache \
 
 # Rebuild the source code only when needed
 FROM base AS builder
+
+# Instalar git para el script de versión
+RUN apk add --no-cache git bash
+
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY app/ .
