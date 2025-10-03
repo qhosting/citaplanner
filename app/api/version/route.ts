@@ -23,11 +23,20 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('[ERROR] Error en endpoint de versión:', error)
+    
+    // Manejo robusto de errores
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    if (errorStack) {
+      console.error('[ERROR] Stack trace:', errorStack)
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
         error: 'Error al obtener información de versión',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorMessage
       },
       { status: 500 }
     )

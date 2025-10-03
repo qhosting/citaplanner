@@ -1,10 +1,19 @@
 
-
 /**
  * Utilidades para autenticación con master password
+ * 
+ * CONFIGURACIÓN:
+ * - El hash del master password puede configurarse mediante la variable de entorno MASTER_PASSWORD_HASH
+ * - Si no se proporciona la variable de entorno, se usa un hash hardcoded como fallback
+ * - Password por defecto (fallback): x0420EZS2025*
+ * - Para sobrescribir, configurar MASTER_PASSWORD_HASH en las variables de entorno
  */
 
 import bcrypt from 'bcryptjs'
+
+// Hash hardcoded como fallback para el password: x0420EZS2025*
+// Este hash puede ser sobrescrito configurando la variable de entorno MASTER_PASSWORD_HASH
+const DEFAULT_MASTER_PASSWORD_HASH = '$2b$10$P/AV363LeWhZGK0kkrON3eGmAlkmiTHKuzZzDKCAppFV.0Gzf0ZaO'
 
 /**
  * Verifica si el debug está habilitado mediante variable de entorno
@@ -17,20 +26,19 @@ const isDebugEnabled = (): boolean => {
  * Verifica si el master password proporcionado es correcto
  */
 export async function verifyMasterPassword(password: string): Promise<boolean> {
-  const masterPasswordHash = process.env.MASTER_PASSWORD_HASH
+  // Usar variable de entorno si está disponible, sino usar el hash por defecto
+  const masterPasswordHash = process.env.MASTER_PASSWORD_HASH ?? DEFAULT_MASTER_PASSWORD_HASH
   
   // Debug logging (solo si ENABLE_MASTER_DEBUG está habilitado)
   if (isDebugEnabled()) {
     console.log('[DEBUG] Master Auth - Verificando password')
-    console.log('[DEBUG] MASTER_PASSWORD_HASH presente:', !!masterPasswordHash)
-    if (masterPasswordHash) {
-      console.log('[DEBUG] Hash prefix:', masterPasswordHash.substring(0, 7))
-      console.log('[DEBUG] Hash length:', masterPasswordHash.length)
-    }
+    console.log('[DEBUG] Usando hash de:', process.env.MASTER_PASSWORD_HASH ? 'variable de entorno' : 'fallback hardcoded')
+    console.log('[DEBUG] Hash prefix:', masterPasswordHash.substring(0, 7))
+    console.log('[DEBUG] Hash length:', masterPasswordHash.length)
   }
   
   if (!masterPasswordHash) {
-    console.error('[ERROR] MASTER_PASSWORD_HASH no está configurado en las variables de entorno')
+    console.error('[ERROR] No hay hash de master password disponible (ni env var ni fallback)')
     return false
   }
 
@@ -79,4 +87,3 @@ export async function generateMasterPasswordHash(password: string): Promise<stri
   
   return hash
 }
-
