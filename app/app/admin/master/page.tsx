@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Shield, UserPlus, Database, Download, Upload, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Shield, UserPlus, Database, Download, Upload, AlertTriangle, CheckCircle, Loader2, Info, Code, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Backup {
@@ -19,11 +20,29 @@ interface Backup {
   date: string
 }
 
+interface VersionInfo {
+  version: string
+  buildDate: string
+  commit: string
+  branch: string
+  environment: string
+}
+
+interface SystemConfig {
+  hashSource: string
+  usingEnvHash: boolean
+  debugEnabled: boolean
+  hashPrefix: string
+  isValidFormat: boolean
+}
+
 export default function MasterAdminPanel() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [masterPassword, setMasterPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
+  const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null)
 
   // Estados para crear usuario
   const [newUser, setNewUser] = useState({
@@ -39,6 +58,12 @@ export default function MasterAdminPanel() {
   const [backups, setBackups] = useState<Backup[]>([])
   const [selectedBackup, setSelectedBackup] = useState('')
 
+  // Cargar información del sistema
+  useEffect(() => {
+    loadVersionInfo()
+    loadSystemConfig()
+  }, [])
+
   // Verificar autenticación al cargar
   useEffect(() => {
     const authStatus = sessionStorage.getItem('masterAuth')
@@ -47,6 +72,30 @@ export default function MasterAdminPanel() {
       loadBackups()
     }
   }, [])
+
+  const loadVersionInfo = async () => {
+    try {
+      const response = await fetch('/api/version')
+      const data = await response.json()
+      if (data.success) {
+        setVersionInfo(data)
+      }
+    } catch (error) {
+      console.error('Error al cargar versión:', error)
+    }
+  }
+
+  const loadSystemConfig = async () => {
+    try {
+      const response = await fetch('/api/admin/master/test-hash')
+      const data = await response.json()
+      if (data.success) {
+        setSystemConfig(data.config)
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error)
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -261,6 +310,61 @@ export default function MasterAdminPanel() {
                 )}
               </Button>
             </form>
+
+            {/* Información del sistema */}
+            {(versionInfo || systemConfig) && (
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Info className="h-4 w-4" />
+                  <span className="font-medium">Información del Sistema</span>
+                </div>
+                
+                {versionInfo && (
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Versión:</span>
+                      <Badge variant="outline">{versionInfo.version}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Entorno:</span>
+                      <Badge variant={versionInfo.environment === 'production' ? 'default' : 'secondary'}>
+                        {versionInfo.environment}
+                      </Badge>
+                    </div>
+                    {versionInfo.commit !== 'unknown' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Commit:</span>
+                        <code className="text-xs">{versionInfo.commit.substring(0, 7)}</code>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {systemConfig && (
+                  <div className="space-y-1 text-xs pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Master Password:</span>
+                      <Badge variant={systemConfig.usingEnvHash ? 'default' : 'secondary'}>
+                        {systemConfig.usingEnvHash ? 'ENV Variable' : 'Hardcoded'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Debug Mode:</span>
+                      <Badge variant={systemConfig.debugEnabled ? 'default' : 'outline'}>
+                        {systemConfig.debugEnabled ? 'Habilitado' : 'Deshabilitado'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Hash Format:</span>
+                      <Badge variant={systemConfig.isValidFormat ? 'default' : 'destructive'}>
+                        {systemConfig.isValidFormat ? 'Válido' : 'Inválido'}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <Alert className="mt-4 border-yellow-500/50 bg-yellow-500/10">
               <AlertTriangle className="h-4 w-4 text-yellow-500" />
               <AlertDescription className="text-yellow-500">
@@ -278,7 +382,7 @@ export default function MasterAdminPanel() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <Shield className="h-8 w-8 text-red-500" />
             <div>
@@ -286,10 +390,92 @@ export default function MasterAdminPanel() {
               <p className="text-slate-400">Operaciones administrativas críticas</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            Cerrar Sesión
-          </Button>
+          <div className="flex items-center gap-3">
+            {versionInfo && (
+              <Badge variant="outline" className="text-xs">
+                v{versionInfo.version}
+              </Badge>
+            )}
+            <Button variant="outline" onClick={handleLogout}>
+              Cerrar Sesión
+            </Button>
+          </div>
         </div>
+
+        {/* Información del sistema */}
+        <Card className="border-blue-500/20 bg-blue-500/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-400" />
+              <CardTitle className="text-lg">Configuración del Sistema</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Versión */}
+              {versionInfo && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Versión del Sistema</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-blue-400" />
+                      <span className="font-mono text-sm">{versionInfo.version}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Build: {new Date(versionInfo.buildDate).toLocaleDateString('es-ES')}
+                    </div>
+                    {versionInfo.commit !== 'unknown' && (
+                      <div className="text-xs text-muted-foreground">
+                        Commit: {versionInfo.commit.substring(0, 7)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Master Password Config */}
+              {systemConfig && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Master Password</div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={systemConfig.usingEnvHash ? 'default' : 'secondary'}>
+                        {systemConfig.usingEnvHash ? '🔐 ENV Variable' : '📝 Hardcoded'}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {systemConfig.usingEnvHash 
+                        ? 'Usando MASTER_PASSWORD_HASH de variables de entorno' 
+                        : 'Usando hash hardcoded por defecto'}
+                    </div>
+                    <div className="text-xs font-mono text-muted-foreground">
+                      Hash: {systemConfig.hashPrefix}...
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Debug Mode */}
+              {systemConfig && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Modo Debug</div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={systemConfig.debugEnabled ? 'default' : 'outline'}>
+                        {systemConfig.debugEnabled ? '🔍 Habilitado' : '🔒 Deshabilitado'}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {systemConfig.debugEnabled 
+                        ? 'ENABLE_MASTER_DEBUG=true - Logs detallados activos' 
+                        : 'Debug deshabilitado - Habilitar con ENABLE_MASTER_DEBUG=true'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Alert de seguridad */}
         <Alert className="border-red-500/50 bg-red-500/10">
