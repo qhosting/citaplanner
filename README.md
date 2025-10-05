@@ -37,7 +37,78 @@ El sistema está diseñado para soportar múltiples empresas:
 - Gestión de sucursales múltiples por empresa
 - Configuraciones personalizables por tenant
 
-## 📦 Instalación
+## 🐳 Despliegue con Docker (Recomendado)
+
+### Sistema de Inicialización Automática
+
+CitaPlanner incluye un sistema de inicialización automática que configura todo lo necesario en el primer despliegue:
+
+✅ **Características:**
+- Ejecuta migraciones de base de datos automáticamente
+- Inserta datos de ejemplo (solo si la BD está vacía)
+- Configura el Master Admin password
+- Verifica la integridad del sistema antes de iniciar
+- Totalmente idempotente (seguro ejecutar múltiples veces)
+
+### Variables de Entorno Requeridas
+
+```bash
+# Base de datos PostgreSQL (REQUERIDA)
+DATABASE_URL=postgresql://user:password@host:5432/citaplanner
+
+# Master Admin Password (OPCIONAL - usa default si no se especifica)
+MASTER_PASSWORD_HASH=$2b$10$P/AV363LeWhZGK0kkrON3eGmAlkmiTHKuzZzDKCAppFV.0Gzf0ZaO
+
+# Next.js (configuradas automáticamente)
+NODE_ENV=production
+NEXT_TELEMETRY_DISABLED=1
+PORT=3000
+```
+
+### Primer Despliegue
+
+1. **Configurar variables de entorno** en Easypanel/Docker
+2. **Desplegar el contenedor** - El sistema se inicializará automáticamente
+3. **Acceder a la aplicación** en `https://tu-dominio.com`
+
+### Datos de Ejemplo Creados
+
+El sistema crea automáticamente:
+- 🏢 1 Empresa: "Bella Vita Spa & Wellness"
+- 🏪 1 Sucursal: "Sucursal Centro"
+- 👥 5 Usuarios con diferentes roles
+- 💆 6 Servicios de ejemplo
+- 👤 6 Clientes de prueba
+- 📅 6 Citas de ejemplo
+- 💳 3 Pagos registrados
+
+### Credenciales de Acceso
+
+**Usuarios del Sistema:**
+```
+Admin:         admin@citaplanner.com / admin123
+Manager:       manager@citaplanner.com / manager123
+Profesional 1: pro1@citaplanner.com / prof123
+Profesional 2: pro2@citaplanner.com / prof123
+Recepcionista: recepcionista@citaplanner.com / prof123
+```
+
+**Master Admin Panel:**
+```
+URL:      https://tu-dominio.com/admin/master
+Password: x0420EZS2025*
+```
+
+⚠️ **IMPORTANTE:** Cambia todas las contraseñas después del primer login.
+
+### Documentación Completa
+
+Para más detalles sobre el sistema de inicialización, consulta:
+- 📖 [Documentación de Inicialización](docs/DEPLOY_INITIALIZATION.md)
+
+---
+
+## 📦 Instalación Local (Desarrollo)
 
 ### Prerrequisitos:
 - Node.js 18+ 

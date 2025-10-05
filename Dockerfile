@@ -69,10 +69,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
-# Copy start scripts with CORRECT PERMISSIONS
+# Copy initialization and start scripts with CORRECT PERMISSIONS
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
 COPY --chown=nextjs:nodejs start.sh ./
 COPY --chown=nextjs:nodejs emergency-start.sh ./
-RUN chmod +x start.sh emergency-start.sh
+RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
 
 # Create writable directory for Prisma with correct permissions
 RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
@@ -95,5 +96,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Start with our custom script
-CMD ["./start.sh"]
+# Start with automatic initialization script
+CMD ["./docker-entrypoint.sh"]
