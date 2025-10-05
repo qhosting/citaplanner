@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Shield, UserPlus, Database, Download, Upload, AlertTriangle, CheckCircle, Loader2, Info, Code, Settings } from 'lucide-react'
+import { Shield, UserPlus, Database, Download, Upload, AlertTriangle, CheckCircle, Loader2, Info, Code, Settings, Key, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Backup {
@@ -34,15 +34,24 @@ interface SystemConfig {
   debugEnabled: boolean
   hashPrefix: string
   isValidFormat: boolean
+  hasDbPassword?: boolean
+  isFirstAccess?: boolean
 }
 
 export default function MasterAdminPanel() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isFirstAccess, setIsFirstAccess] = useState(false)
   const [masterPassword, setMasterPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
   const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null)
+
+  // Estados para configurar contraseña
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
 
   // Estados para crear usuario
   const [newUser, setNewUser] = useState({
@@ -62,6 +71,7 @@ export default function MasterAdminPanel() {
   useEffect(() => {
     loadVersionInfo()
     loadSystemConfig()
+    checkFirstAccess()
   }, [])
 
   // Verificar autenticación al cargar
@@ -72,6 +82,18 @@ export default function MasterAdminPanel() {
       loadBackups()
     }
   }, [])
+
+  const checkFirstAccess = async () => {
+    try {
+      const response = await fetch('/api/admin/master/check-first-access')
+      const data = await response.json()
+      if (data.success) {
+        setIsFirstAccess(data.isFirstAccess)
+      }
+    } catch (error) {
+      console.error('Error al verificar primer acceso:', error)
+    }
+  }
 
   const loadVersionInfo = async () => {
     try {
@@ -113,7 +135,15 @@ export default function MasterAdminPanel() {
       if (data.success) {
         setIsAuthenticated(true)
         sessionStorage.setItem('masterAuth', 'true')
-        toast.success('Autenticación exitosa')
+        
+        if (data.isFirstAccess) {
+          setIsFirstAccess(true)
+          setShowPasswordSetup(true)
+          toast.success('Primer acceso - Configure su contraseña master')
+        } else {
+          toast.success('Autenticación exitosa')
+        }
+        
         loadBackups()
       } else {
         toast.error('Master password incorrecto')
@@ -124,6 +154,53 @@ export default function MasterAdminPanel() {
     } finally {
       setIsLoading(false)
       setMasterPassword('')
+    }
+  }
+
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+
+    if (newPassword.length < 8) {
+      toast.error('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/admin/master/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newPassword,
+          currentPassword: isFirstAccess ? undefined : currentPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success(data.message || 'Contraseña configurada exitosamente')
+        setShowPasswordSetup(false)
+        setNewPassword('')
+        setConfirmPassword('')
+        setCurrentPassword('')
+        setIsFirstAccess(false)
+        await checkFirstAccess()
+        await loadSystemConfig()
+      } else {
+        toast.error(data.error || 'Error al configurar contraseña')
+      }
+    } catch (error) {
+      toast.error('Error al configurar contraseña')
+      console.error(error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -279,33 +356,48 @@ export default function MasterAdminPanel() {
             </div>
             <CardTitle className="text-2xl text-center">Panel de Administración Master</CardTitle>
             <CardDescription className="text-center">
-              Ingrese el master password para acceder
+              {isFirstAccess 
+                ? '🎉 Primer acceso - Presione "Acceder" para configurar su contraseña'
+                : 'Ingrese el master password para acceder'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="masterPassword">Master Password</Label>
-                <Input
-                  id="masterPassword"
-                  type="password"
-                  value={masterPassword}
-                  onChange={(e) => setMasterPassword(e.target.value)}
-                  placeholder="Ingrese master password"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
+              {!isFirstAccess && (
+                <div className="space-y-2">
+                  <Label htmlFor="masterPassword">Master Password</Label>
+                  <Input
+                    id="masterPassword"
+                    type="password"
+                    value={masterPassword}
+                    onChange={(e) => setMasterPassword(e.target.value)}
+                    placeholder="Ingrese master password"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+              
+              {isFirstAccess && (
+                <Alert className="border-green-500/50 bg-green-500/10">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <AlertDescription className="text-green-400">
+                    <strong>Primer acceso detectado:</strong> No se requiere contraseña. 
+                    Después de acceder, podrá configurar su contraseña master.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verificando...
+                    {isFirstAccess ? 'Accediendo...' : 'Verificando...'}
                   </>
                 ) : (
                   <>
                     <Shield className="mr-2 h-4 w-4" />
-                    Autenticar
+                    {isFirstAccess ? 'Acceder' : 'Autenticar'}
                   </>
                 )}
               </Button>
@@ -344,8 +436,8 @@ export default function MasterAdminPanel() {
                   <div className="space-y-1 text-xs pt-2 border-t">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Master Password:</span>
-                      <Badge variant={systemConfig.usingEnvHash ? 'default' : 'secondary'}>
-                        {systemConfig.usingEnvHash ? 'ENV Variable' : 'Hardcoded'}
+                      <Badge variant={systemConfig.hasDbPassword ? 'default' : systemConfig.usingEnvHash ? 'secondary' : 'outline'}>
+                        {systemConfig.hasDbPassword ? 'Base de Datos' : systemConfig.usingEnvHash ? 'ENV Variable' : 'Hardcoded'}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
@@ -365,12 +457,125 @@ export default function MasterAdminPanel() {
               </div>
             )}
 
-            <Alert className="mt-4 border-yellow-500/50 bg-yellow-500/10">
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              <AlertDescription className="text-yellow-500">
-                Este panel permite realizar operaciones críticas. Use con precaución.
-              </AlertDescription>
-            </Alert>
+            {!isFirstAccess && (
+              <Alert className="mt-4 border-yellow-500/50 bg-yellow-500/10">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <AlertDescription className="text-yellow-500">
+                  Este panel permite realizar operaciones críticas. Use con precaución.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Modal de configuración de contraseña (primer acceso o cambio)
+  if (showPasswordSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center justify-center mb-4">
+              <Key className="h-12 w-12 text-blue-500" />
+            </div>
+            <CardTitle className="text-2xl text-center">
+              {isFirstAccess ? 'Configurar Contraseña Master' : 'Cambiar Contraseña Master'}
+            </CardTitle>
+            <CardDescription className="text-center">
+              {isFirstAccess 
+                ? 'Configure una contraseña segura para proteger el panel master'
+                : 'Ingrese su contraseña actual y la nueva contraseña'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSetPassword} className="space-y-4">
+              {!isFirstAccess && (
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Ingrese contraseña actual"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  required
+                  disabled={isLoading}
+                  minLength={8}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repita la contraseña"
+                  required
+                  disabled={isLoading}
+                  minLength={8}
+                />
+              </div>
+
+              <Alert className="border-blue-500/50 bg-blue-500/10">
+                <Info className="h-4 w-4 text-blue-400" />
+                <AlertDescription className="text-blue-400 text-sm">
+                  <strong>Requisitos:</strong>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Mínimo 8 caracteres</li>
+                    <li>Recomendado: Incluir mayúsculas, minúsculas, números y símbolos</li>
+                    <li>Guarde esta contraseña en un lugar seguro</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowPasswordSetup(false)
+                    setNewPassword('')
+                    setConfirmPassword('')
+                    setCurrentPassword('')
+                  }}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  {isFirstAccess ? 'Configurar Después' : 'Cancelar'}
+                </Button>
+                <Button type="submit" disabled={isLoading} className="flex-1">
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="mr-2 h-4 w-4" />
+                      {isFirstAccess ? 'Configurar' : 'Actualizar'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>
@@ -401,6 +606,17 @@ export default function MasterAdminPanel() {
             </Button>
           </div>
         </div>
+
+        {/* Alert de primer acceso */}
+        {isFirstAccess && (
+          <Alert className="border-green-500/50 bg-green-500/10">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <AlertDescription className="text-green-400">
+              <strong>Primer acceso detectado:</strong> Se recomienda configurar una contraseña master personalizada.
+              Vaya a la pestaña "Configuración" para establecer su contraseña.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Información del sistema */}
         <Card className="border-blue-500/20 bg-blue-500/5">
@@ -439,18 +655,22 @@ export default function MasterAdminPanel() {
                   <div className="text-sm text-muted-foreground">Master Password</div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant={systemConfig.usingEnvHash ? 'default' : 'secondary'}>
-                        {systemConfig.usingEnvHash ? '🔐 ENV Variable' : '📝 Hardcoded'}
+                      <Badge variant={systemConfig.hasDbPassword ? 'default' : systemConfig.usingEnvHash ? 'secondary' : 'outline'}>
+                        {systemConfig.hasDbPassword ? '🔐 Base de Datos' : systemConfig.usingEnvHash ? '📝 ENV Variable' : '⚠️ Hardcoded'}
                       </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {systemConfig.usingEnvHash 
-                        ? 'Usando MASTER_PASSWORD_HASH de variables de entorno' 
-                        : 'Usando hash hardcoded por defecto'}
+                      {systemConfig.hasDbPassword 
+                        ? 'Usando contraseña configurada en base de datos' 
+                        : systemConfig.usingEnvHash 
+                          ? 'Usando MASTER_PASSWORD_HASH de variables de entorno' 
+                          : 'Usando hash hardcoded por defecto'}
                     </div>
-                    <div className="text-xs font-mono text-muted-foreground">
-                      Hash: {systemConfig.hashPrefix}...
-                    </div>
+                    {!systemConfig.hasDbPassword && (
+                      <div className="text-xs font-mono text-muted-foreground">
+                        Hash: {systemConfig.hashPrefix}...
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -488,7 +708,7 @@ export default function MasterAdminPanel() {
 
         {/* Tabs principales */}
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
             <TabsTrigger value="users">
               <UserPlus className="mr-2 h-4 w-4" />
               Usuarios
@@ -500,6 +720,10 @@ export default function MasterAdminPanel() {
             <TabsTrigger value="backups">
               <Download className="mr-2 h-4 w-4" />
               Backups
+            </TabsTrigger>
+            <TabsTrigger value="settings">
+              <Key className="mr-2 h-4 w-4" />
+              Configuración
             </TabsTrigger>
           </TabsList>
 
@@ -750,6 +974,59 @@ export default function MasterAdminPanel() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Tab: Configuración de Contraseña */}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración de Contraseña Master</CardTitle>
+                <CardDescription>
+                  {isFirstAccess 
+                    ? 'Configure una contraseña master para proteger este panel'
+                    : 'Cambie su contraseña master actual'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isFirstAccess && (
+                  <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                    <AlertDescription className="text-yellow-500">
+                      <strong>Primer acceso:</strong> Se recomienda configurar una contraseña personalizada 
+                      para proteger el acceso a este panel.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  onClick={() => setShowPasswordSetup(true)}
+                  variant={isFirstAccess ? 'default' : 'secondary'}
+                >
+                  <Key className="mr-2 h-4 w-4" />
+                  {isFirstAccess ? 'Configurar Contraseña' : 'Cambiar Contraseña'}
+                </Button>
+
+                {systemConfig && (
+                  <div className="pt-4 border-t space-y-3">
+                    <h4 className="font-medium">Estado Actual</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Fuente de Contraseña:</span>
+                        <Badge variant={systemConfig.hasDbPassword ? 'default' : 'secondary'}>
+                          {systemConfig.hasDbPassword ? 'Base de Datos' : systemConfig.hashSource}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Estado:</span>
+                        <Badge variant={systemConfig.hasDbPassword ? 'default' : 'outline'}>
+                          {systemConfig.hasDbPassword ? 'Configurada' : 'Por Defecto'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
