@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyMasterPassword, getMasterAuthConfig } from '@/lib/master-auth'
+import { verifyMasterPassword, getMasterAuthConfig, isFirstTimeAccess } from '@/lib/master-auth'
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7)
@@ -11,14 +11,37 @@ export async function POST(request: NextRequest) {
     console.log(`[MASTER-AUTH:${requestId}] 🌐 URL:`, request.url)
     console.log(`[MASTER-AUTH:${requestId}] 📍 Method:`, request.method)
     
+    // Verificar si es primer acceso
+    const isFirstAccess = await isFirstTimeAccess()
+    console.log(`[MASTER-AUTH:${requestId}] 🎯 Primer acceso: ${isFirstAccess}`)
+    
+    // Si es primer acceso, permitir entrada sin contraseña
+    if (isFirstAccess) {
+      console.log(`[MASTER-AUTH:${requestId}] 🎉 ========================================`)
+      console.log(`[MASTER-AUTH:${requestId}] 🎉 PRIMER ACCESO - ENTRADA SIN CONTRASEÑA`)
+      console.log(`[MASTER-AUTH:${requestId}] 🎉 ========================================`)
+      
+      return NextResponse.json({ 
+        success: true,
+        isFirstAccess: true,
+        message: 'Primer acceso - configure su contraseña',
+        debug: {
+          requestId,
+          timestamp: new Date().toISOString(),
+          isFirstAccess: true
+        }
+      })
+    }
+    
     // Obtener configuración del sistema
-    const config = getMasterAuthConfig()
+    const config = await getMasterAuthConfig()
     console.log(`[MASTER-AUTH:${requestId}] ⚙️  Configuración del sistema:`)
     console.log(`[MASTER-AUTH:${requestId}]   - Hash source: ${config.hashSource}`)
     console.log(`[MASTER-AUTH:${requestId}]   - Using ENV hash: ${config.usingEnvHash}`)
     console.log(`[MASTER-AUTH:${requestId}]   - Debug enabled: ${config.debugEnabled}`)
     console.log(`[MASTER-AUTH:${requestId}]   - Hash format valid: ${config.isValidFormat}`)
     console.log(`[MASTER-AUTH:${requestId}]   - Hash prefix: ${config.hashPrefix}`)
+    console.log(`[MASTER-AUTH:${requestId}]   - Has DB password: ${config.hasDbPassword}`)
 
     // Parsear el body
     let body
