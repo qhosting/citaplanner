@@ -231,8 +231,7 @@ async function executeSeed(requestId: string) {
         description: 'Masaje de cuerpo completo con aceites esenciales',
         duration: 60,
         price: 800,
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.service.create({
@@ -241,8 +240,7 @@ async function executeSeed(requestId: string) {
         description: 'Tratamiento facial profundo con productos premium',
         duration: 90,
         price: 1200,
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.service.create({
@@ -251,8 +249,7 @@ async function executeSeed(requestId: string) {
         description: 'Cuidado completo de manos y pies',
         duration: 120,
         price: 600,
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.service.create({
@@ -261,8 +258,7 @@ async function executeSeed(requestId: string) {
         description: 'Corte y peinado profesional',
         duration: 45,
         price: 350,
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.service.create({
@@ -271,8 +267,7 @@ async function executeSeed(requestId: string) {
         description: 'Depilación profesional de piernas completas',
         duration: 75,
         price: 450,
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.service.create({
@@ -281,8 +276,7 @@ async function executeSeed(requestId: string) {
         description: 'Hidratación profunda y reparación del cabello',
         duration: 60,
         price: 550,
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     })
   ])
@@ -298,8 +292,7 @@ async function executeSeed(requestId: string) {
         lastName: 'González',
         email: 'maria.gonzalez@email.com',
         phone: '+52 55 9876 5432',
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.client.create({
@@ -308,8 +301,7 @@ async function executeSeed(requestId: string) {
         lastName: 'Pérez',
         email: 'juan.perez@email.com',
         phone: '+52 55 8765 4321',
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.client.create({
@@ -318,8 +310,7 @@ async function executeSeed(requestId: string) {
         lastName: 'Martínez',
         email: 'ana.martinez@email.com',
         phone: '+52 55 7654 3210',
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.client.create({
@@ -328,8 +319,7 @@ async function executeSeed(requestId: string) {
         lastName: 'López',
         email: 'carlos.lopez@email.com',
         phone: '+52 55 6543 2109',
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.client.create({
@@ -338,8 +328,7 @@ async function executeSeed(requestId: string) {
         lastName: 'Hernández',
         email: 'laura.hernandez@email.com',
         phone: '+52 55 5432 1098',
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     }),
     prisma.client.create({
@@ -348,8 +337,7 @@ async function executeSeed(requestId: string) {
         lastName: 'García',
         email: 'roberto.garcia@email.com',
         phone: '+52 55 4321 0987',
-        tenantId: tenant.id,
-        branchId: branch.id
+        tenantId: tenant.id
       }
     })
   ])
