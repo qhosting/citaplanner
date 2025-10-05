@@ -10,7 +10,7 @@ import { getMasterAuthConfig, verifyMasterPassword } from '@/lib/master-auth'
  */
 export async function GET(request: NextRequest) {
   try {
-    const config = getMasterAuthConfig()
+    const config = await getMasterAuthConfig()
     
     // Test con el password por defecto
     const testPassword = 'x0420EZS2025*'
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const config = getMasterAuthConfig()
+    const config = await getMasterAuthConfig()
     const isValid = await verifyMasterPassword(password)
     
     return NextResponse.json({
