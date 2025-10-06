@@ -29,8 +29,14 @@ COPY public/ ./public/
 
 # Copy entrypoint scripts to builder stage (they're now in app/ directory)
 # This ensures they're available in the builder stage for copying to runner stage
-# Verify the scripts are present
-RUN ls -la docker-entrypoint.sh start.sh emergency-start.sh && echo "✅ Entrypoint scripts found in builder stage"
+# Verify the scripts are present and show their full paths
+RUN echo "=== Verifying entrypoint scripts in builder stage ===" && \
+    ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && \
+    echo "✅ Entrypoint scripts found in builder stage at /app/" && \
+    echo "=== Checking if scripts have correct shebang ===" && \
+    head -1 /app/docker-entrypoint.sh && \
+    echo "=== Builder stage /app directory contents ===" && \
+    ls -la /app/ | head -20
 
 # Generate Prisma client with complete runtime
 RUN npx prisma generate --generator client
@@ -77,15 +83,32 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
-# Copy initialization and start scripts with CORRECT PERMISSIONS
-# Copy from builder stage where they were included via COPY app/ .
-COPY --from=builder --chown=nextjs:nodejs /app/docker-entrypoint.sh ./
-COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./
-COPY --from=builder --chown=nextjs:nodejs /app/emergency-start.sh ./
+# CRITICAL FIX: Copy entrypoint scripts AFTER standalone output
+# The standalone output at /app/.next/standalone/app contains the built app
+# but NOT our custom scripts. We must copy them from the builder stage
+# where they exist at /app/ (from "COPY app/ ." command)
+COPY --from=builder --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
+COPY --from=builder --chown=nextjs:nodejs /app/emergency-start.sh ./emergency-start.sh
 RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
 
-# Verify entrypoint scripts are present in runner stage
-RUN ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && echo "✅ Entrypoint scripts verified in runner stage"
+# Verify entrypoint scripts are present in runner stage with comprehensive debugging
+RUN echo "=== COMPREHENSIVE RUNNER STAGE VERIFICATION ===" && \
+    echo "=== 1. Checking /app directory contents ===" && \
+    ls -la /app/ && \
+    echo "" && \
+    echo "=== 2. Checking for entrypoint scripts specifically ===" && \
+    ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && \
+    echo "" && \
+    echo "=== 3. Verifying script permissions and shebang ===" && \
+    file /app/docker-entrypoint.sh && \
+    head -1 /app/docker-entrypoint.sh && \
+    echo "" && \
+    echo "=== 4. Checking if bash is available ===" && \
+    which bash && \
+    bash --version | head -1 && \
+    echo "" && \
+    echo "✅ All entrypoint scripts verified in runner stage"
 
 # Create writable directory for Prisma with correct permissions
 RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
@@ -102,6 +125,12 @@ RUN ls -la node_modules/.bin/ || echo "⚠️  .bin directory missing"
 RUN ls -la node_modules/.bin/prisma && echo "✅ Prisma CLI found in .bin" || echo "❌ CRITICAL: prisma CLI not found in .bin"
 
 USER nextjs
+
+# Final verification as nextjs user - ensure the script is accessible and executable
+RUN echo "=== FINAL VERIFICATION AS NEXTJS USER ===" && \
+    ls -la /app/docker-entrypoint.sh && \
+    test -x /app/docker-entrypoint.sh && echo "✅ Script is executable by nextjs user" || echo "❌ Script is NOT executable by nextjs user" && \
+    test -r /app/docker-entrypoint.sh && echo "✅ Script is readable by nextjs user" || echo "❌ Script is NOT readable by nextjs user"
 
 EXPOSE 3000
 
