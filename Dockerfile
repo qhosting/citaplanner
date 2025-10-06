@@ -12,23 +12,29 @@ RUN apt-get update && apt-get install -y \
     sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-# Note: Using --legacy-peer-deps to resolve TypeScript ESLint peer dependency conflict
-# between @typescript-eslint/parser@7.0.0 and @typescript-eslint/eslint-plugin@7.0.0
-# which expects parser@^6.0.0. This is a temporary solution until package versions are synchronized.
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --legacy-peer-deps --production=false
+# Set working directory
+WORKDIR /app
 
-FROM base
+# Copy package files first for dependency installation
+# Note: The app uses Yarn, not npm. yarn.lock is in the app/ subdirectory.
+COPY --link app/package.json app/yarn.lock ./app/
+
+# Install dependencies using Yarn
+# The project uses Yarn (yarn.lock exists), not npm/package-lock.json
+WORKDIR /app/app
+RUN --mount=type=cache,target=/root/.yarn \
+    yarn install --frozen-lockfile
 
 # Copy application code
+WORKDIR /app
 COPY --link . .
 
 # Build the application
-RUN npm run build
+WORKDIR /app/app
+RUN yarn build
 
 # Prepare production environment
-RUN npm prune --omit=dev
+RUN yarn install --production --frozen-lockfile
 
 # Setup user and permissions
 RUN useradd -ms /bin/bash -u 1001 appuser && \
@@ -45,4 +51,4 @@ EXPOSE 8080
 
 # Set entrypoint
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start"]
+CMD ["yarn", "start"]
