@@ -1,0 +1,141 @@
+
+{
+  "version": "1.0",
+  "project": {
+    "name": "CitaPlanner",
+    "description": "Sistema de gestión de citas para múltiples negocios"
+  },
+  "services": {
+    "app": {
+      "name": "citaplanner-app",
+      "type": "app",
+      "source": {
+        "type": "github",
+        "repo": "qhosting/citaplanner",
+        "branch": "main",
+        "autoDeploy": true
+      },
+      "build": {
+        "type": "nixpacks",
+        "buildCommand": "npm run build",
+        "startCommand": "npm start"
+      },
+      "resources": {
+        "cpuLimit": 1,
+        "cpuReservation": 0.5,
+        "memoryLimit": 2048,
+        "memoryReservation": 512
+      },
+      "deploy": {
+        "replicas": 1,
+        "zeroDowntime": true
+      },
+      "domains": [
+        {
+          "host": "citaplanner.com",
+          "https": true,
+          "port": 3000,
+          "path": "/"
+        }
+      ],
+      "env": {
+        "required": [
+          "DATABASE_URL",
+          "NEXTAUTH_URL",
+          "NEXTAUTH_SECRET",
+          "MASTER_PASSWORD_HASH",
+          "NODE_ENV",
+          "PORT"
+        ],
+        "optional": [
+          "EMAIL_SERVER_HOST",
+          "EMAIL_SERVER_PORT",
+          "EMAIL_SERVER_USER",
+          "EMAIL_SERVER_PASSWORD",
+          "EMAIL_FROM",
+          "TWILIO_ACCOUNT_SID",
+          "TWILIO_AUTH_TOKEN",
+          "TWILIO_PHONE_NUMBER"
+        ]
+      },
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "citaplanner-uploads",
+          "mountPath": "/app/public/uploads"
+        }
+      ],
+      "healthCheck": {
+        "path": "/api/health",
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3
+      }
+    },
+    "database": {
+      "name": "citaplanner-db",
+      "type": "postgres",
+      "image": "postgres:16-alpine",
+      "resources": {
+        "cpuLimit": 0.5,
+        "cpuReservation": 0.25,
+        "memoryLimit": 1024,
+        "memoryReservation": 256
+      },
+      "env": {
+        "required": [
+          "POSTGRES_USER",
+          "POSTGRES_PASSWORD",
+          "POSTGRES_DB"
+        ]
+      },
+      "mounts": [
+        {
+          "type": "volume",
+          "name": "citaplanner-postgres-data",
+          "mountPath": "/var/lib/postgresql/data"
+        }
+      ],
+      "backup": {
+        "enabled": true,
+        "schedule": "0 2 * * *",
+        "retention": 7
+      }
+    }
+  },
+  "network": {
+    "internal": true,
+    "links": [
+      {
+        "from": "citaplanner-app",
+        "to": "citaplanner-db",
+        "alias": "database"
+      }
+    ]
+  },
+  "deployment": {
+    "strategy": "rolling",
+    "maxSurge": 1,
+    "maxUnavailable": 0
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": [
+      "cpu",
+      "memory",
+      "network",
+      "disk"
+    ]
+  },
+  "security": {
+    "ssl": {
+      "enabled": true,
+      "provider": "letsencrypt",
+      "email": "admin@citaplanner.com"
+    },
+    "firewall": {
+      "enabled": true,
+      "allowedPorts": [80, 443]
+    }
+  }
+}
