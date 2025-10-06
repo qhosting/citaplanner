@@ -10,25 +10,25 @@ echo ""
 # Configurar PATH para incluir node_modules/.bin
 export PATH="$PATH:/app/node_modules/.bin"
 
-# Función para logging con timestamp
+# Función para logging con timestamp (escribiendo a stderr para evitar interferencia con tee)
 log_info() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ℹ️  $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ℹ️  $1" >&2
 }
 
 log_success() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ✅ $1" >&2
 }
 
 log_warning() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ⚠️  $1" >&2
 }
 
 log_error() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ❌ $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ❌ $1" >&2
 }
 
 log_debug() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] 🔍 $1"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] 🔍 $1" >&2
 }
 
 # Validar y normalizar DATABASE_URL
@@ -135,30 +135,18 @@ check_database_connection() {
         return 1
     fi
     
-    # Intentar conectar con Prisma
-    local max_attempts=5
-    local attempt=1
+    # Intentar conectar con Prisma (solo 1 intento ya que psql ya validó la conexión)
+    log_debug "Verificando con Prisma..."
     
-    while [ $attempt -le $max_attempts ]; do
-        log_debug "Intento $attempt/$max_attempts - Verificando con Prisma..."
-        
-        if eval "$PRISMA_CMD db execute --stdin" <<EOF > /dev/null 2>&1
+    if eval "$PRISMA_CMD db execute --stdin" <<EOF > /dev/null 2>&1
 SELECT 1;
 EOF
-        then
-            log_success "Prisma puede conectarse a la base de datos"
-            return 0
-        fi
-        
-        if [ $attempt -lt $max_attempts ]; then
-            log_warning "Reintentando conexión con Prisma... ($attempt/$max_attempts)"
-            sleep 2
-        fi
-        
-        attempt=$((attempt + 1))
-    done
+    then
+        log_success "Prisma puede conectarse a la base de datos"
+        return 0
+    fi
     
-    log_warning "Prisma no pudo verificar la conexión, pero continuaremos"
+    log_warning "Prisma no pudo verificar la conexión, pero continuaremos (psql ya validó conectividad)"
     return 0
 }
 
@@ -233,9 +221,9 @@ EOF
 run_seed() {
     log_info "Ejecutando seed de datos de ejemplo..."
     
-    # Verificar que el script de seed existe
-    if [ ! -f "scripts/seed.ts" ]; then
-        log_error "Script de seed no encontrado en scripts/seed.ts"
+    # Verificar que el script de seed existe (en app/scripts/seed.ts)
+    if [ ! -f "app/scripts/seed.ts" ]; then
+        log_error "Script de seed no encontrado en app/scripts/seed.ts"
         return 1
     fi
     
