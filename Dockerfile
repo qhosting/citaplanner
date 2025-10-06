@@ -99,5 +99,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Start with automatic initialization script
-CMD ["./docker-entrypoint.sh"]
+# Start with automatic initialization script - EXPLICITLY USE BASH
+CMD ["/bin/bash", "./docker-entrypoint.sh"]
