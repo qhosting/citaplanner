@@ -86,7 +86,7 @@ detect_prisma_cmd() {
     fi
 }
 
-# Verificar conexión a la base de datos usando psql
+# Verificar conexión a la base de datos usando psql con diagnósticos avanzados
 check_database_connection_psql() {
     log_info "Verificando conectividad con PostgreSQL usando psql..."
     
@@ -97,17 +97,99 @@ check_database_connection_psql() {
     local db_port=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^@]+@[^:]+:([0-9]+).*|\2|')
     local db_name=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^/]+/([^?]+).*|\2|')
     
+    log_info "════════════════════════════════════════════════════════════════"
+    log_info "🔍 DIAGNÓSTICO DE CONECTIVIDAD DE RED"
+    log_info "════════════════════════════════════════════════════════════════"
+    
+    # 1. Verificar resolución DNS del hostname
+    log_info "1️⃣  Verificando resolución DNS para: $db_host"
+    if command -v nslookup >/dev/null 2>&1; then
+        local dns_result=$(nslookup "$db_host" 2>&1)
+        if echo "$dns_result" | grep -q "Address:"; then
+            local resolved_ip=$(echo "$dns_result" | grep "Address:" | tail -1 | awk '{print $2}')
+            log_success "✅ DNS resuelto: $db_host -> $resolved_ip"
+        else
+            log_error "❌ No se pudo resolver DNS para: $db_host"
+            log_debug "Salida de nslookup: $dns_result"
+        fi
+    else
+        log_warning "⚠️  nslookup no disponible, instalando bind-tools..."
+        apk add --no-cache bind-tools >/dev/null 2>&1 || log_warning "No se pudo instalar bind-tools"
+    fi
+    
+    # 2. Verificar conectividad de red con ping
+    log_info "2️⃣  Verificando conectividad de red (ping) a: $db_host"
+    if ping -c 2 -W 2 "$db_host" >/dev/null 2>&1; then
+        log_success "✅ Ping exitoso a $db_host"
+    else
+        log_warning "⚠️  Ping falló (puede ser normal si ICMP está bloqueado)"
+    fi
+    
+    # 3. Verificar conectividad TCP al puerto PostgreSQL
+    log_info "3️⃣  Verificando conectividad TCP al puerto $db_port en $db_host"
+    if command -v nc >/dev/null 2>&1; then
+        if nc -zv -w 5 "$db_host" "$db_port" 2>&1 | grep -q "open\|succeeded"; then
+            log_success "✅ Puerto $db_port está abierto y accesible en $db_host"
+        else
+            log_error "❌ No se puede conectar al puerto $db_port en $db_host"
+            log_error "   Esto indica un problema de red o que PostgreSQL no está escuchando"
+        fi
+    else
+        log_warning "⚠️  netcat (nc) no disponible, instalando..."
+        apk add --no-cache netcat-openbsd >/dev/null 2>&1 || log_warning "No se pudo instalar netcat"
+    fi
+    
+    # 4. Intentar variantes del hostname (sin prefijo)
+    log_info "4️⃣  Probando variantes del hostname..."
+    local hostname_variants=("$db_host")
+    
+    # Si el hostname tiene un prefijo (ej: cloudmx_citaplanner-db), probar sin él
+    if echo "$db_host" | grep -q "_"; then
+        local short_hostname=$(echo "$db_host" | sed 's/^[^_]*_//')
+        hostname_variants+=("$short_hostname")
+        log_debug "   Variante sin prefijo: $short_hostname"
+    fi
+    
+    # Probar también solo el nombre del servicio
+    if echo "$db_host" | grep -q "-"; then
+        local service_name=$(echo "$db_host" | sed 's/.*_//')
+        hostname_variants+=("$service_name")
+        log_debug "   Variante solo servicio: $service_name"
+    fi
+    
+    log_info "════════════════════════════════════════════════════════════════"
+    log_info "🔌 INTENTANDO CONEXIÓN A POSTGRESQL"
+    log_info "════════════════════════════════════════════════════════════════"
+    
     local max_attempts=30
     local attempt=1
+    local connection_successful=false
     
     while [ $attempt -le $max_attempts ]; do
-        log_debug "Intento $attempt/$max_attempts - Conectando a PostgreSQL..."
+        log_debug "Intento $attempt/$max_attempts - Probando conexión a PostgreSQL..."
         
-        # Intentar conexión con psql
-        if PGPASSWORD="$db_pass" psql -h "$db_host" -p "$db_port" -U "$db_user" -d "$db_name" -c "SELECT 1;" > /dev/null 2>&1; then
-            log_success "Conexión a PostgreSQL establecida correctamente"
-            return 0
-        fi
+        # Probar cada variante del hostname
+        for hostname in "${hostname_variants[@]}"; do
+            log_debug "   Probando hostname: $hostname"
+            
+            # Intentar conexión con psql
+            if PGPASSWORD="$db_pass" psql -h "$hostname" -p "$db_port" -U "$db_user" -d "$db_name" -c "SELECT 1;" > /dev/null 2>&1; then
+                log_success "✅ Conexión exitosa usando hostname: $hostname"
+                
+                # Si el hostname exitoso es diferente al original, actualizar DATABASE_URL
+                if [ "$hostname" != "$db_host" ]; then
+                    log_warning "⚠️  El hostname original '$db_host' no funcionó"
+                    log_success "✅ Usando hostname alternativo: $hostname"
+                    
+                    # Actualizar DATABASE_URL con el hostname correcto
+                    export DATABASE_URL=$(echo "$DATABASE_URL" | sed "s|@$db_host:|@$hostname:|")
+                    log_info "📝 DATABASE_URL actualizada para usar: $hostname"
+                fi
+                
+                connection_successful=true
+                break 2
+            fi
+        done
         
         if [ $attempt -lt $max_attempts ]; then
             log_warning "Esperando a que PostgreSQL esté disponible... ($attempt/$max_attempts)"
@@ -117,13 +199,35 @@ check_database_connection_psql() {
         attempt=$((attempt + 1))
     done
     
-    log_error "No se pudo conectar a PostgreSQL después de $max_attempts intentos"
-    log_error "Verifica que:"
-    log_error "  1. El servidor PostgreSQL esté ejecutándose"
-    log_error "  2. Las credenciales sean correctas"
-    log_error "  3. El host y puerto sean accesibles"
-    log_error "  4. La base de datos exista"
-    return 1
+    if [ "$connection_successful" = true ]; then
+        log_info "════════════════════════════════════════════════════════════════"
+        log_success "✅ CONEXIÓN A POSTGRESQL ESTABLECIDA"
+        log_info "════════════════════════════════════════════════════════════════"
+        return 0
+    else
+        log_info "════════════════════════════════════════════════════════════════"
+        log_error "❌ NO SE PUDO CONECTAR A POSTGRESQL"
+        log_info "════════════════════════════════════════════════════════════════"
+        log_error "Diagnóstico completo:"
+        log_error "  1. Hostname original: $db_host"
+        log_error "  2. Puerto: $db_port"
+        log_error "  3. Usuario: $db_user"
+        log_error "  4. Base de datos: $db_name"
+        log_error ""
+        log_error "Posibles causas:"
+        log_error "  ❌ El hostname '$db_host' no es correcto para Easypanel"
+        log_error "  ❌ PostgreSQL no está ejecutándose o no está listo"
+        log_error "  ❌ Las credenciales son incorrectas"
+        log_error "  ❌ Problema de red entre contenedores"
+        log_error ""
+        log_error "Soluciones sugeridas:"
+        log_error "  1. Verifica el nombre del servicio PostgreSQL en Easypanel"
+        log_error "  2. El hostname debe coincidir con el nombre del servicio"
+        log_error "  3. En Easypanel, los servicios se comunican usando sus nombres"
+        log_error "  4. Ejemplo: si el servicio se llama 'citaplanner-db', usa ese nombre"
+        log_error "  5. NO uses prefijos como 'cloudmx_' en el hostname"
+        return 1
+    fi
 }
 
 # Verificar conexión a la base de datos usando Prisma

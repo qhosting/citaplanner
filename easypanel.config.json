@@ -56,7 +56,10 @@
           "TWILIO_ACCOUNT_SID",
           "TWILIO_AUTH_TOKEN",
           "TWILIO_PHONE_NUMBER"
-        ]
+        ],
+        "notes": {
+          "DATABASE_URL": "CRITICAL: Use the exact PostgreSQL service name from Easypanel. Format: postgresql://postgres:PASSWORD@SERVICE_NAME:5432/DATABASE_NAME. Common service names: citaplanner-db, citaplanner-postgres, postgres. Example: postgresql://postgres:674a351a07db86883d92@citaplanner-db:5432/citaplanner-db"
+        }
       },
       "mounts": [
         {
@@ -87,7 +90,11 @@
           "POSTGRES_USER",
           "POSTGRES_PASSWORD",
           "POSTGRES_DB"
-        ]
+        ],
+        "defaults": {
+          "POSTGRES_USER": "postgres",
+          "POSTGRES_DB": "citaplanner-db"
+        }
       },
       "mounts": [
         {
@@ -111,7 +118,10 @@
         "to": "citaplanner-db",
         "alias": "database"
       }
-    ]
+    ],
+    "notes": {
+      "connectivity": "The app service connects to the database using the service name 'citaplanner-db'. Both services must be on the same internal network. The DATABASE_URL must use the exact service name configured in Easypanel."
+    }
   },
   "deployment": {
     "strategy": "rolling",
@@ -136,6 +146,18 @@
     "firewall": {
       "enabled": true,
       "allowedPorts": [80, 443]
+    }
+  },
+  "troubleshooting": {
+    "database_connectivity": {
+      "issue": "Cannot connect to PostgreSQL",
+      "common_causes": [
+        "Incorrect service name in DATABASE_URL",
+        "Services not on the same network",
+        "PostgreSQL service not running",
+        "Incorrect credentials"
+      ],
+      "solution": "Verify the PostgreSQL service name in Easypanel matches the host in DATABASE_URL. See EASYPANEL_DATABASE_CONNECTIVITY_FIX.md for detailed instructions."
     }
   }
 }
