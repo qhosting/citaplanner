@@ -1,103 +1,48 @@
+# syntax=docker.io/docker/dockerfile:1
 
-# Multi-stage build para optimizar el tamaño de la imagen
-FROM node:18-alpine AS base
+FROM node:20-bookworm-slim AS base
+LABEL fly_launch_runtime="Remix"
 
-# Instalar dependencias necesarias para Prisma, PostgreSQL client y Alpine
-RUN apk add --no-cache libc6-compat openssl postgresql-client
+# Install necessary packages
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    fuse3 \
+    openssl \
+    postgresql-client \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
-# Instalar dependencias
-FROM base AS deps
-COPY app/package.json app/package-lock.json ./
+# Install dependencies
+# Note: Using --legacy-peer-deps to resolve TypeScript ESLint peer dependency conflict
+# between @typescript-eslint/parser@7.0.0 and @typescript-eslint/eslint-plugin@7.0.0
+# which expects parser@^6.0.0. This is a temporary solution until package versions are synchronized.
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --production=false
+    npm ci --legacy-peer-deps --production=false
 
-# Rebuild the source code only when needed
-FROM base AS builder
+FROM base
 
-# Instalar git para el script de versión
-RUN apk add --no-cache git bash
+# Copy application code
+COPY --link . .
 
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY app/ .
-COPY public/ ./public/
+# Build the application
+RUN npm run build
 
-# Generate Prisma client with complete runtime
-RUN npx prisma generate --generator client
+# Prepare production environment
+RUN npm prune --omit=dev
 
-# Copy and prepare the standalone build script
-COPY build-with-standalone.sh ./
-RUN chmod +x build-with-standalone.sh
+# Setup user and permissions
+RUN useradd -ms /bin/bash -u 1001 appuser && \
+    mkdir -p /data && \
+    chown -R appuser:appuser /data /app
 
-# Build the application with standalone output - FORCE REBUILD NO CACHE
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_OUTPUT_MODE=standalone
-# IMPORTANT: Update this timestamp when making critical changes to force Docker cache invalidation
-# Format: YYYYMMDD_DESCRIPTION (e.g., 20251006_PR34_CACHE_FIX)
-# This ensures deployments use the latest code instead of cached layers
-ENV BUILD_TIMESTAMP=20251006_PR34_CACHE_FIX
-RUN echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && ./build-with-standalone.sh
+USER appuser
 
-# Production image, copy all the files and run next
-FROM base AS runner
-WORKDIR /app
+# Make entrypoint executable
+RUN chmod +x /app/docker-entrypoint.sh
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+# Expose port
+EXPOSE 8080
 
-# Ensure PostgreSQL client is available in runner stage
-RUN apk add --no-cache postgresql-client
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy built application
-COPY --from=builder /app/public ./public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Automatically leverage output traces to reduce image size
-# CRITICAL: Copy from standalone/app/* because outputFileTracingRoot creates nested structure
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/app ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Copy Prisma files with CORRECT PERMISSIONS - COMPLETE RUNTIME + CLI
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
-
-# Copy initialization and start scripts with CORRECT PERMISSIONS
-COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
-COPY --chown=nextjs:nodejs start.sh ./
-COPY --chown=nextjs:nodejs emergency-start.sh ./
-RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
-
-# Create writable directory for Prisma with correct permissions
-RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
-RUN mkdir -p node_modules/@prisma && chown -R nextjs:nodejs node_modules/@prisma
-RUN mkdir -p node_modules/.bin && chown -R nextjs:nodejs node_modules/.bin
-
-# Verify Prisma client installation - CRITICAL CHECKS
-RUN ls -la node_modules/@prisma/ || echo "⚠️  @prisma directory missing"
-RUN ls -la node_modules/.prisma/ || echo "⚠️  .prisma directory missing"
-RUN ls -la node_modules/prisma/ || echo "⚠️  prisma directory missing"
-
-# Verify Prisma CLI is available in node_modules/.bin - MUST EXIST
-RUN ls -la node_modules/.bin/ || echo "⚠️  .bin directory missing"
-RUN ls -la node_modules/.bin/prisma && echo "✅ Prisma CLI found in .bin" || echo "❌ CRITICAL: prisma CLI not found in .bin"
-
-USER nextjs
-
-EXPOSE 3000
-
-ENV PORT=3000
-ENV HOSTNAME=0.0.0.0
-
-# Start with automatic initialization script
-CMD ["./docker-entrypoint.sh"]
+# Set entrypoint
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["npm", "run", "start"]
