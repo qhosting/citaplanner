@@ -324,9 +324,9 @@ EOF
 run_seed() {
     log_info "Ejecutando seed de datos de ejemplo..."
     
-    # Verificar que el script de seed existe (en app/scripts/seed.ts)
-    if [ ! -f "app/scripts/seed.ts" ]; then
-        log_error "Script de seed no encontrado en app/scripts/seed.ts"
+    # Verificar que el script de seed existe (en scripts/seed.ts)
+    if [ ! -f "scripts/seed.ts" ]; then
+        log_error "Script de seed no encontrado en scripts/seed.ts"
         return 1
     fi
     
