@@ -37,7 +37,10 @@ RUN chmod +x build-with-standalone.sh
 # Build the application with standalone output - FORCE REBUILD NO CACHE
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_OUTPUT_MODE=standalone
-ENV BUILD_TIMESTAMP=20251001_CITAPLANNER_DEPLOYMENT
+# IMPORTANT: Update this timestamp when making critical changes to force Docker cache invalidation
+# Format: YYYYMMDD_DESCRIPTION (e.g., 20251006_PR34_CACHE_FIX)
+# This ensures deployments use the latest code instead of cached layers
+ENV BUILD_TIMESTAMP=20251006_PR34_CACHE_FIX
 RUN echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && ./build-with-standalone.sh
 
 # Production image, copy all the files and run next
