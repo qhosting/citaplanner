@@ -99,5 +99,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Start with automatic initialization script - EXPLICITLY USE BASH
-CMD ["/bin/bash", "./docker-entrypoint.sh"]
+# Use ENTRYPOINT to run the initialization script
+# The script has #!/bin/bash shebang and ends with "exec node server.js"
+# This ensures proper process replacement and signal handling
+ENTRYPOINT ["./docker-entrypoint.sh"]
