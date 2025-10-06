@@ -1,253 +1,134 @@
 
-# CitaPlanner MVP
+# CitaPlanner
 
-**Plataforma SaaS integral para la gestión de negocios basados en citas**
+Sistema de gestión de citas para múltiples negocios.
 
-CitaPlanner es una solución completa que permite a los negocios de servicios (salones de belleza, spas, clínicas, etc.) gestionar eficientemente sus citas, clientes, servicios e inventario.
+## 🚀 Despliegue Rápido en Easypanel
 
-## 🚀 Características Principales
+CitaPlanner incluye un sistema completo de automatización para Easypanel que configura todo automáticamente.
 
-### ✅ Módulos Completados:
-- **📅 Gestión de Citas** - Sistema completo de agendamiento con estados y seguimiento
-- **👥 Gestión de Clientes** - Base de datos de clientes con historial completo
-- **📦 Inventario Completo** - Control total de productos, stock, alertas y reabastecimiento
-- **🏢 Multi-tenant** - Soporte para múltiples empresas en una sola instalación
-- **🔐 Sistema de Autenticación** - NextAuth.js con roles y permisos
-- **📊 Dashboard Analítico** - Métricas y reportes en tiempo real
-- **💳 Procesamiento de Pagos** - Integración con OpenPay para México
-- **📱 Notificaciones** - SMS y WhatsApp para recordatorios
-- **🎨 Interfaz Moderna** - Diseño responsive con Tailwind CSS
+### Requisitos Previos
 
-### 🛠️ Tecnologías Utilizadas:
-- **Frontend:** Next.js 14, React 18, TypeScript
-- **Styling:** Tailwind CSS, Shadcn/ui Components
-- **Backend:** Next.js API Routes, Prisma ORM
-- **Base de Datos:** PostgreSQL
-- **Autenticación:** NextAuth.js
-- **Pagos:** OpenPay Integration
-- **Forms:** React Hook Form + Zod validation
-- **Estado:** Zustand
-- **Notificaciones:** React Hot Toast
+1. Cuenta en Easypanel con acceso a tu servidor
+2. Token de API de Easypanel (Settings > Users > Generate API Key)
+3. Node.js v18 o superior
 
-## 🏗️ Arquitectura Multi-tenant
+### Configuración Automática
 
-El sistema está diseñado para soportar múltiples empresas:
-- Cada empresa (tenant) tiene sus propios datos aislados
-- Usuarios con diferentes roles: SUPERADMIN, ADMIN, MANAGER, PROFESSIONAL, RECEPTIONIST, CLIENT
-- Gestión de sucursales múltiples por empresa
-- Configuraciones personalizables por tenant
-
-## 🐳 Despliegue con Docker (Recomendado)
-
-### Sistema de Inicialización Automática
-
-CitaPlanner incluye un sistema de inicialización automática que configura todo lo necesario en el primer despliegue:
-
-✅ **Características:**
-- Ejecuta migraciones de base de datos automáticamente
-- Inserta datos de ejemplo (solo si la BD está vacía)
-- Configura el Master Admin password
-- Verifica la integridad del sistema antes de iniciar
-- Totalmente idempotente (seguro ejecutar múltiples veces)
-
-### Variables de Entorno Requeridas
+1. **Configura tus credenciales de Easypanel:**
 
 ```bash
-# Base de datos PostgreSQL (REQUERIDA)
-DATABASE_URL=postgresql://user:password@host:5432/citaplanner
-
-# Master Admin Password (OPCIONAL - usa default si no se especifica)
-MASTER_PASSWORD_HASH=$2b$10$P/AV363LeWhZGK0kkrON3eGmAlkmiTHKuzZzDKCAppFV.0Gzf0ZaO
-
-# Next.js (configuradas automáticamente)
-NODE_ENV=production
-NEXT_TELEMETRY_DISABLED=1
-PORT=3000
+export EASYPANEL_URL="https://adm.whatscloud.site"
+export EASYPANEL_TOKEN="tu-token-de-api"
 ```
 
-### Primer Despliegue
+2. **Ejecuta el script de automatización:**
 
-1. **Configurar variables de entorno** en Easypanel/Docker
-2. **Desplegar el contenedor** - El sistema se inicializará automáticamente
-3. **Acceder a la aplicación** en `https://tu-dominio.com`
-
-### Datos de Ejemplo Creados
-
-El sistema crea automáticamente:
-- 🏢 1 Empresa: "Bella Vita Spa & Wellness"
-- 🏪 1 Sucursal: "Sucursal Centro"
-- 👥 5 Usuarios con diferentes roles
-- 💆 6 Servicios de ejemplo
-- 👤 6 Clientes de prueba
-- 📅 6 Citas de ejemplo
-- 💳 3 Pagos registrados
-
-### Credenciales de Acceso
-
-**Usuarios del Sistema:**
-```
-Admin:         admin@citaplanner.com / admin123
-Manager:       manager@citaplanner.com / manager123
-Profesional 1: pro1@citaplanner.com / prof123
-Profesional 2: pro2@citaplanner.com / prof123
-Recepcionista: recepcionista@citaplanner.com / prof123
+```bash
+npm install
+node scripts/setup-easypanel.js
 ```
 
-**Master Admin Panel:**
-```
-URL:      https://tu-dominio.com/admin/master
-Password: x0420EZS2025*
-```
+El script automáticamente:
+- ✅ Crea el proyecto en Easypanel
+- ✅ Configura PostgreSQL con credenciales seguras
+- ✅ Genera el archivo `.env` con todas las variables
+- ✅ Configura las variables de entorno en Easypanel
+- ✅ Valida toda la configuración
 
-⚠️ **IMPORTANTE:** Cambia todas las contraseñas después del primer login.
+3. **Configura el servicio de la aplicación en Easypanel:**
+
+   - Ve a tu proyecto en Easypanel
+   - Crea un nuevo servicio "App"
+   - Conecta el repositorio de GitHub
+   - Copia las variables de entorno del archivo `.env` generado
+   - Despliega la aplicación
 
 ### Documentación Completa
 
-Para más detalles sobre el sistema de inicialización, consulta:
-- 📖 [Documentación de Inicialización](docs/DEPLOY_INITIALIZATION.md)
+Para más detalles sobre el proceso de automatización, consulta:
+- [Guía de Automatización de Easypanel](docs/easypanel_automation.md)
 
----
+## 📋 Características
 
-## 📦 Instalación Local (Desarrollo)
+- 🏢 Gestión multi-negocio
+- 📅 Sistema de citas y reservas
+- 👥 Gestión de clientes
+- 💼 Panel de administración
+- 📊 Reportes y estadísticas
+- 🔐 Autenticación segura
+- 📱 Diseño responsive
 
-### Prerrequisitos:
-- Node.js 18+ 
-- PostgreSQL
-- Yarn
+## 🛠️ Tecnologías
 
-### Pasos:
+- **Frontend:** Next.js 14, React, TailwindCSS
+- **Backend:** Next.js API Routes, Prisma ORM
+- **Base de Datos:** PostgreSQL
+- **Autenticación:** NextAuth.js
+- **Despliegue:** Easypanel (Docker)
+
+## 📖 Documentación
+
+- [Guía de Automatización de Easypanel](docs/easypanel_automation.md)
+- [Configuración de Variables de Entorno](.env.example)
+- [Configuración de Easypanel](easypanel.config.json)
+
+## 🔧 Desarrollo Local
 
 1. **Clonar el repositorio:**
+
 ```bash
-git clone <tu-repo-url>
-cd citaplanner_mvp
+git clone https://github.com/qhosting/citaplanner.git
+cd citaplanner
 ```
 
 2. **Instalar dependencias:**
+
 ```bash
-cd app
-yarn install
+npm install
 ```
 
 3. **Configurar variables de entorno:**
+
 ```bash
-# Copiar archivo de ejemplo
 cp .env.example .env
-
-# Configurar las siguientes variables:
-DATABASE_URL="postgresql://user:password@localhost:5432/citaplanner"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="tu-secret-key"
-
-# Para OpenPay (opcional):
-OPENPAY_ID="tu-merchant-id"
-OPENPAY_PRIVATE_KEY="tu-private-key"
-OPENPAY_PUBLIC_KEY="tu-public-key"
+# Edita .env con tus valores
 ```
 
-4. **Configurar la base de datos:**
+4. **Configurar base de datos:**
+
 ```bash
-# Generar Prisma Client
-yarn prisma generate
-
-# Ejecutar migraciones
-yarn prisma db push
-
-# Sembrar datos de prueba (opcional)
-yarn prisma db seed
+npx prisma migrate dev
+npx prisma generate
 ```
 
-5. **Iniciar el servidor de desarrollo:**
+5. **Iniciar servidor de desarrollo:**
+
 ```bash
-yarn dev
+npm run dev
 ```
 
 La aplicación estará disponible en `http://localhost:3000`
 
-## 🔧 Scripts Disponibles
+## 🔐 Seguridad
 
-```bash
-# Desarrollo
-yarn dev
+- Todas las contraseñas se almacenan con hash bcrypt
+- Autenticación basada en sesiones con NextAuth.js
+- Variables de entorno para credenciales sensibles
+- HTTPS obligatorio en producción
 
-# Build de producción
-yarn build
+## 📝 Scripts Disponibles
 
-# Iniciar en producción
-yarn start
+- `npm run dev` - Inicia el servidor de desarrollo
+- `npm run build` - Construye la aplicación para producción
+- `npm start` - Inicia el servidor de producción
+- `npm run lint` - Ejecuta el linter
+- `node scripts/setup-easypanel.js` - Automatización de Easypanel
+- `node scripts/generate-env.js` - Genera archivo .env con valores seguros
 
-# Linting
-yarn lint
+## 🤝 Contribuir
 
-# Base de datos
-yarn prisma studio      # Interfaz visual de la BD
-yarn prisma db push     # Aplicar cambios del schema
-yarn prisma generate    # Generar cliente
-```
-
-## 📁 Estructura del Proyecto
-
-```
-app/
-├── app/                    # App Router (Next.js 14)
-│   ├── admin/             # Panel de administración
-│   ├── api/               # API Routes
-│   ├── auth/              # Páginas de autenticación
-│   ├── dashboard/         # Dashboard principal
-│   └── book/              # Portal de reservas público
-├── components/            # Componentes reutilizables
-│   ├── ui/                # Componentes base (Shadcn)
-│   ├── modals/            # Modales del sistema
-│   └── charts/            # Gráficos y visualizaciones
-├── lib/                   # Utilidades y configuraciones
-├── prisma/                # Schema y migraciones de BD
-└── public/                # Archivos estáticos
-```
-
-## 🎯 Funcionalidades por Rol
-
-### Super Administrador
-- Gestión de tenants (empresas)
-- Configuración global del sistema
-- Métricas generales
-
-### Administrador de Empresa
-- Gestión completa de la empresa
-- Configuración de sucursales
-- Gestión de personal y servicios
-- Reportes y análisis
-- **Inventario completo con alertas de stock**
-
-### Manager/Profesional
-- Gestión de citas propias
-- Ver clientes asignados
-- Actualizar servicios
-
-### Recepcionista
-- Gestión de citas de la sucursal
-- Registrar pagos
-- Gestión básica de clientes
-
-## 💡 Funcionalidades Destacadas del Inventario
-
-- ✅ **Modal completo** con 3 modos: Crear, Editar, Reabastecer
-- ✅ **Generación automática de SKU**
-- ✅ **Cálculo de márgenes de ganancia**
-- ✅ **Alertas de stock bajo** con código de colores
-- ✅ **Filtros avanzados** por categoría y estado
-- ✅ **Reabastecimiento masivo** inteligente
-- ✅ **Dashboard con estadísticas** completas
-
-## 🔄 Próximas Características
-
-- [ ] Sistema de horarios avanzado
-- [ ] Integración con calendarios externos
-- [ ] App móvil (React Native)
-- [ ] Sistema de fidelización de clientes
-- [ ] Reportes avanzados con IA
-- [ ] Integración con más pasarelas de pago
-
-## 🤝 Contribución
+Las contribuciones son bienvenidas. Por favor:
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
@@ -257,15 +138,12 @@ app/
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
-## 🆘 Soporte
+## 📧 Contacto
 
-Para soporte técnico o consultas:
-- 📧 Email: soporte@citaplanner.com
-- 📚 Documentación: [docs.citaplanner.com](https://docs.citaplanner.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/tu-usuario/citaplanner-mvp/issues)
+Para soporte o consultas, abre un issue en el repositorio de GitHub.
 
 ---
 
-**Desarrollado con ❤️ para revolucionar la gestión de citas en México**
+**Desarrollado con ❤️ para la gestión eficiente de citas**
