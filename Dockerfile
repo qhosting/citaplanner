@@ -93,7 +93,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
 COPY --from=builder --chown=nextjs:nodejs /app/emergency-start.sh ./emergency-start.sh
 RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
 
-# Verify entrypoint scripts are present in runner stage
+# CRITICAL FIX: Copy scripts directory for seed functionality
+# The standalone output doesn't include the scripts directory which contains seed.ts
+# This is needed for database seeding via npm run prisma db seed
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+
+# Copy tsx and related dependencies needed for running TypeScript seed scripts
+# tsx is required by npm run prisma db seed command
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/dotenv ./node_modules/dotenv
+
+# Verify entrypoint scripts and seed directory are present in runner stage
 RUN echo "=== RUNNER STAGE VERIFICATION ===" && \
     echo "Checking entrypoint scripts:" && \
     ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && \
@@ -101,7 +111,13 @@ RUN echo "=== RUNNER STAGE VERIFICATION ===" && \
     which bash && bash --version | head -1 && \
     echo "Checking script shebang:" && \
     head -1 /app/docker-entrypoint.sh && \
-    echo "✅ All entrypoint scripts verified in runner stage"
+    echo "Verifying scripts directory for seed:" && \
+    ls -la /app/scripts/ && \
+    test -f /app/scripts/seed.ts && echo "✅ seed.ts found at /app/scripts/seed.ts" || echo "❌ seed.ts NOT found" && \
+    echo "Verifying tsx and dependencies:" && \
+    test -d /app/node_modules/tsx && echo "✅ tsx module found" || echo "❌ tsx module NOT found" && \
+    test -d /app/node_modules/dotenv && echo "✅ dotenv module found" || echo "❌ dotenv module NOT found" && \
+    echo "✅ All entrypoint scripts, seed directory, and dependencies verified in runner stage"
 
 # Create writable directory for Prisma with correct permissions
 RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
