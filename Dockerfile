@@ -27,6 +27,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY app/ .
 COPY public/ ./public/
 
+# Copy entrypoint scripts to builder stage (they're now in app/ directory)
+# This ensures they're available in the builder stage for copying to runner stage
+# Verify the scripts are present
+RUN ls -la docker-entrypoint.sh start.sh emergency-start.sh && echo "✅ Entrypoint scripts found in builder stage"
+
 # Generate Prisma client with complete runtime
 RUN npx prisma generate --generator client
 
@@ -73,10 +78,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
 # Copy initialization and start scripts with CORRECT PERMISSIONS
-COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
-COPY --chown=nextjs:nodejs start.sh ./
-COPY --chown=nextjs:nodejs emergency-start.sh ./
+# Copy from builder stage where they were included via COPY app/ .
+COPY --from=builder --chown=nextjs:nodejs /app/docker-entrypoint.sh ./
+COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./
+COPY --from=builder --chown=nextjs:nodejs /app/emergency-start.sh ./
 RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
+
+# Verify entrypoint scripts are present in runner stage
+RUN ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && echo "✅ Entrypoint scripts verified in runner stage"
 
 # Create writable directory for Prisma with correct permissions
 RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
