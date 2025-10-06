@@ -55,7 +55,7 @@ check_database_connection() {
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
-        if $PRISMA_CMD db execute --stdin <<< "SELECT 1;" > /dev/null 2>&1; then
+        if echo "SELECT 1;" | $PRISMA_CMD db execute --stdin > /dev/null 2>&1; then
             log_success "Conexión a la base de datos establecida"
             return 0
         fi
@@ -110,7 +110,7 @@ is_database_empty() {
     
     # Contar usuarios en la base de datos
     local user_count
-    user_count=$($PRISMA_CMD db execute --stdin <<< "SELECT COUNT(*) FROM users;" 2>/dev/null | tail -n 1 | tr -d ' ')
+    user_count=$(echo "SELECT COUNT(*) FROM users;" | $PRISMA_CMD db execute --stdin 2>/dev/null | tail -n 1 | tr -d ' ')
     
     if [ -z "$user_count" ] || [ "$user_count" = "0" ]; then
         log_info "Base de datos vacía - se ejecutará el seed"
@@ -164,7 +164,7 @@ configure_master_password() {
     
     # Verificar si ya existe configuración de master admin
     local config_exists
-    config_exists=$($PRISMA_CMD db execute --stdin <<< "SELECT COUNT(*) FROM master_admin_config WHERE id = 'singleton';" 2>/dev/null | tail -n 1 | tr -d ' ')
+    config_exists=$(echo "SELECT COUNT(*) FROM master_admin_config WHERE id = 'singleton';" | $PRISMA_CMD db execute --stdin 2>/dev/null | tail -n 1 | tr -d ' ')
     
     if [ -n "$config_exists" ] && [ "$config_exists" != "0" ]; then
         log_info "Configuración de Master Admin ya existe - omitiendo"
@@ -181,7 +181,7 @@ configure_master_password() {
     local master_hash="${MASTER_PASSWORD_HASH:-$default_hash}"
     
     # Insertar configuración en la base de datos
-    if $PRISMA_CMD db execute --stdin <<< "INSERT INTO master_admin_config (id, password_hash, created_at, updated_at, last_password_change) VALUES ('singleton', '$master_hash', NOW(), NOW(), NOW()) ON CONFLICT (id) DO NOTHING;" 2>&1; then
+    if echo "INSERT INTO master_admin_config (id, password_hash, created_at, updated_at, last_password_change) VALUES ('singleton', '$master_hash', NOW(), NOW(), NOW()) ON CONFLICT (id) DO NOTHING;" | $PRISMA_CMD db execute --stdin 2>&1; then
         log_success "Configuración de Master Admin creada correctamente"
         log_info "═══════════════════════════════════════════════════════"
         log_info "🔐 Master Admin Panel configurado"
