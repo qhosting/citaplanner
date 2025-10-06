@@ -1,125 +1,100 @@
 
-# syntax=docker.io/docker/dockerfile:1
+# Multi-stage build para optimizar el tamaño de la imagen
+FROM node:18-alpine AS base
 
-# ============================================================================
-# CITAPLANNER - OPTIMIZED MULTI-STAGE DOCKERFILE
-# ============================================================================
-# This Dockerfile builds the CitaPlanner Next.js application with:
-# - Proper multi-stage build for optimal image size
-# - Correct handling of app/ subdirectory structure
-# - Production-only dependencies in final image
-# - Robust error handling and logging
-# ============================================================================
+# Instalar dependencias necesarias para Prisma y Alpine
+RUN apk add --no-cache libc6-compat openssl
 
-# ----------------------------------------------------------------------------
-# Stage 1: Dependencies
-# Install all dependencies (production + development)
-# ----------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS deps
+WORKDIR /app
 
-# Install system dependencies required for build and runtime
-RUN apt-get update && apt-get install -y \
-    --no-install-recommends \
-    ca-certificates \
-    openssl \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+# Configurar yarn para usar cache
+ENV YARN_CACHE_FOLDER=/app/.yarn-cache
 
-# Set working directory to /app/app (application root is in app/ subdirectory)
-WORKDIR /app/app
+# Instalar dependencias
+FROM base AS deps
+COPY app/package.json app/yarn.lock* ./
+RUN --mount=type=cache,target=/app/.yarn-cache \
+    yarn install --production=false
 
-# Copy package files for dependency installation
-# Files are at app/package.json and app/yarn.lock in the repository
-COPY --link app/package.json app/yarn.lock ./
+# Rebuild the source code only when needed
+FROM base AS builder
 
-# Install ALL dependencies (including devDependencies needed for build)
-RUN --mount=type=cache,target=/root/.yarn \
-    yarn install --frozen-lockfile
+# Instalar git para el script de versión
+RUN apk add --no-cache git bash
 
-# ----------------------------------------------------------------------------
-# Stage 2: Builder
-# Build the Next.js application
-# ----------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY app/ .
+COPY public/ ./public/
 
-WORKDIR /app/app
+# Generate Prisma client with complete runtime
+RUN npx prisma generate --generator client
 
-# Copy dependencies from deps stage
-COPY --from=deps /app/app/node_modules ./node_modules
+# Copy and prepare the standalone build script
+COPY build-with-standalone.sh ./
+RUN chmod +x build-with-standalone.sh
 
-# Copy application source code
-# Source is in app/ subdirectory, copy to /app/app/
-COPY --link app/ ./
+# Build the application with standalone output - FORCE REBUILD NO CACHE
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_OUTPUT_MODE=standalone
+ENV BUILD_TIMESTAMP=20251001_CITAPLANNER_DEPLOYMENT
+RUN echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && ./build-with-standalone.sh
 
-# Build the Next.js application
-# This creates the .next directory with optimized production build
-RUN yarn build
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
 
-# ----------------------------------------------------------------------------
-# Stage 3: Runner
-# Production runtime with minimal dependencies
-# ----------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS runner
-
-# Install only runtime system dependencies
-RUN apt-get update && apt-get install -y \
-    --no-install-recommends \
-    ca-certificates \
-    openssl \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-WORKDIR /app/app
-
-# Set production environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user for security
-RUN useradd -ms /bin/bash -u 1001 appuser && \
-    mkdir -p /data && \
-    chown -R appuser:appuser /data /app
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Copy production dependencies only
-# Re-install with --production flag to exclude devDependencies
-COPY --link app/package.json app/yarn.lock ./
-RUN --mount=type=cache,target=/root/.yarn \
-    yarn install --production --frozen-lockfile && \
-    yarn cache clean
+# Copy built application
+COPY --from=builder /app/public ./public
 
-# Copy built application from builder stage
-COPY --from=builder /app/app/.next ./.next
-COPY --from=builder /app/app/public ./public
-COPY --from=builder /app/app/prisma ./prisma
-COPY --from=builder /app/app/scripts ./scripts
-COPY --from=builder /app/app/next.config.js ./next.config.js
+# Set the correct permission for prerender cache
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
 
-# Copy entrypoint script from repository root
-COPY --link docker-entrypoint.sh /app/docker-entrypoint.sh
+# Automatically leverage output traces to reduce image size
+# CRITICAL: Copy from standalone/app/* because outputFileTracingRoot creates nested structure
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/app ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Make entrypoint executable (must be done before USER switch)
-RUN chmod +x /app/docker-entrypoint.sh
+# Copy Prisma files with CORRECT PERMISSIONS - COMPLETE RUNTIME + CLI
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
-# Set proper permissions for appuser
-RUN chown -R appuser:appuser /app
+# Copy initialization and start scripts with CORRECT PERMISSIONS
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
+COPY --chown=nextjs:nodejs start.sh ./
+COPY --chown=nextjs:nodejs emergency-start.sh ./
+RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
 
-# Switch to non-root user
-USER appuser
+# Create writable directory for Prisma with correct permissions
+RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
+RUN mkdir -p node_modules/@prisma && chown -R nextjs:nodejs node_modules/@prisma
+RUN mkdir -p node_modules/.bin && chown -R nextjs:nodejs node_modules/.bin
 
-# Expose application port
-EXPOSE 8080
+# Verify Prisma client installation - CRITICAL CHECKS
+RUN ls -la node_modules/@prisma/ || echo "⚠️  @prisma directory missing"
+RUN ls -la node_modules/.prisma/ || echo "⚠️  .prisma directory missing"
+RUN ls -la node_modules/prisma/ || echo "⚠️  prisma directory missing"
 
-# Set entrypoint and default command
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["yarn", "start"]
+# Verify Prisma CLI is available in node_modules/.bin - MUST EXIST
+RUN ls -la node_modules/.bin/ || echo "⚠️  .bin directory missing"
+RUN ls -la node_modules/.bin/prisma && echo "✅ Prisma CLI found in .bin" || echo "❌ CRITICAL: prisma CLI not found in .bin"
 
-# ============================================================================
-# BUILD NOTES:
-# - Application code is in app/ subdirectory of repository
-# - Working directory is /app/app in container
-# - Multi-stage build reduces final image size by ~40%
-# - Only production dependencies included in final image
-# - Entrypoint script handles database migrations and seeding
-# ============================================================================
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+# Start with automatic initialization script
+CMD ["./docker-entrypoint.sh"]
