@@ -7,14 +7,11 @@ RUN apk add --no-cache libc6-compat openssl postgresql-client
 
 WORKDIR /app
 
-# Configurar yarn para usar cache
-ENV YARN_CACHE_FOLDER=/app/.yarn-cache
-
 # Instalar dependencias
 FROM base AS deps
-COPY app/package.json app/yarn.lock* ./
-RUN --mount=type=cache,target=/app/.yarn-cache \
-    yarn install --production=false
+COPY app/package.json app/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --production=false
 
 # Rebuild the source code only when needed
 FROM base AS builder
