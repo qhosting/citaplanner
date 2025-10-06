@@ -142,7 +142,7 @@ check_database_connection() {
     while [ $attempt -le $max_attempts ]; do
         log_debug "Intento $attempt/$max_attempts - Verificando con Prisma..."
         
-        if $PRISMA_CMD db execute --stdin <<EOF > /dev/null 2>&1
+        if eval "$PRISMA_CMD db execute --stdin" <<EOF > /dev/null 2>&1
 SELECT 1;
 EOF
         then
@@ -168,7 +168,7 @@ run_migrations() {
     
     # Primero intentar migrate deploy (recomendado para producción)
     log_debug "Intentando migrate deploy..."
-    if $PRISMA_CMD migrate deploy 2>&1 | tee /tmp/migrate-deploy.log; then
+    if eval "$PRISMA_CMD migrate deploy" 2>&1 | tee /tmp/migrate-deploy.log; then
         log_success "Migraciones aplicadas correctamente con migrate deploy"
         return 0
     else
@@ -176,7 +176,7 @@ run_migrations() {
         
         # Fallback a db push si migrate deploy falla
         log_debug "Intentando db push..."
-        if $PRISMA_CMD db push --accept-data-loss --skip-generate 2>&1 | tee /tmp/db-push.log; then
+        if eval "$PRISMA_CMD db push --accept-data-loss --skip-generate" 2>&1 | tee /tmp/db-push.log; then
             log_success "Esquema de base de datos sincronizado correctamente con db push"
             return 0
         else
@@ -191,7 +191,7 @@ run_migrations() {
 generate_prisma_client() {
     log_info "Generando cliente Prisma..."
     
-    if $PRISMA_CMD generate 2>&1 | tee /tmp/prisma-generate.log; then
+    if eval "$PRISMA_CMD generate" 2>&1 | tee /tmp/prisma-generate.log; then
         log_success "Cliente Prisma generado correctamente"
         
         # Verificar que el cliente se generó correctamente
@@ -215,7 +215,7 @@ is_database_empty() {
     
     # Verificar si la tabla users existe y tiene datos
     local user_count
-    user_count=$($PRISMA_CMD db execute --stdin <<EOF 2>/dev/null | tail -n 1 | tr -d ' '
+    user_count=$(eval "$PRISMA_CMD db execute --stdin" <<EOF 2>/dev/null | tail -n 1 | tr -d ' '
 SELECT COUNT(*) FROM users;
 EOF
 )
@@ -272,7 +272,7 @@ configure_master_password() {
     
     # Verificar si ya existe configuración de master admin
     local config_exists
-    config_exists=$($PRISMA_CMD db execute --stdin <<EOF 2>/dev/null | tail -n 1 | tr -d ' '
+    config_exists=$(eval "$PRISMA_CMD db execute --stdin" <<EOF 2>/dev/null | tail -n 1 | tr -d ' '
 SELECT COUNT(*) FROM master_admin_config WHERE id = 'singleton';
 EOF
 )
@@ -292,7 +292,7 @@ EOF
     local master_hash="${MASTER_PASSWORD_HASH:-$default_hash}"
     
     # Insertar configuración en la base de datos
-    if $PRISMA_CMD db execute --stdin <<EOF 2>&1
+    if eval "$PRISMA_CMD db execute --stdin" <<EOF 2>&1
 INSERT INTO master_admin_config (id, password_hash, created_at, updated_at, last_password_change) 
 VALUES ('singleton', '$master_hash', NOW(), NOW(), NOW()) 
 ON CONFLICT (id) DO NOTHING;
