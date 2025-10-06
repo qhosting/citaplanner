@@ -58,8 +58,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Instalar herramientas de diagnóstico de red para el entrypoint
-RUN apk add --no-cache postgresql-client bind-tools netcat-openbsd
+# CRITICAL: Install bash first - required for entrypoint script execution
+# Also install diagnostic tools for network troubleshooting
+RUN apk add --no-cache bash postgresql-client bind-tools netcat-openbsd coreutils
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -92,22 +93,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
 COPY --from=builder --chown=nextjs:nodejs /app/emergency-start.sh ./emergency-start.sh
 RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
 
-# Verify entrypoint scripts are present in runner stage with comprehensive debugging
-RUN echo "=== COMPREHENSIVE RUNNER STAGE VERIFICATION ===" && \
-    echo "=== 1. Checking /app directory contents ===" && \
-    ls -la /app/ && \
-    echo "" && \
-    echo "=== 2. Checking for entrypoint scripts specifically ===" && \
+# Verify entrypoint scripts are present in runner stage
+RUN echo "=== RUNNER STAGE VERIFICATION ===" && \
+    echo "Checking entrypoint scripts:" && \
     ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && \
-    echo "" && \
-    echo "=== 3. Verifying script permissions and shebang ===" && \
-    file /app/docker-entrypoint.sh && \
+    echo "Verifying bash installation:" && \
+    which bash && bash --version | head -1 && \
+    echo "Checking script shebang:" && \
     head -1 /app/docker-entrypoint.sh && \
-    echo "" && \
-    echo "=== 4. Checking if bash is available ===" && \
-    which bash && \
-    bash --version | head -1 && \
-    echo "" && \
     echo "✅ All entrypoint scripts verified in runner stage"
 
 # Create writable directory for Prisma with correct permissions
