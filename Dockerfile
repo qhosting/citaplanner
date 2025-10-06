@@ -2,8 +2,8 @@
 # Multi-stage build para optimizar el tamaño de la imagen
 FROM node:18-alpine AS base
 
-# Instalar dependencias necesarias para Prisma y Alpine
-RUN apk add --no-cache libc6-compat openssl
+# Instalar dependencias necesarias para Prisma, PostgreSQL client y Alpine
+RUN apk add --no-cache libc6-compat openssl postgresql-client
 
 WORKDIR /app
 
@@ -46,6 +46,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Ensure PostgreSQL client is available in runner stage
+RUN apk add --no-cache postgresql-client
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

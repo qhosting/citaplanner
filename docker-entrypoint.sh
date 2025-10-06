@@ -1,6 +1,6 @@
 
 #!/bin/sh
-set -e
+set -euo pipefail
 
 echo "════════════════════════════════════════════════════════════════"
 echo "🚀 CITAPLANNER - Sistema de Inicialización Automática"
@@ -27,6 +27,51 @@ log_error() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] ❌ $1"
 }
 
+log_debug() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] 🔍 $1"
+}
+
+# Validar y normalizar DATABASE_URL
+validate_database_url() {
+    log_info "Validando DATABASE_URL..."
+    
+    if [ -z "${DATABASE_URL:-}" ]; then
+        log_error "DATABASE_URL no está configurada"
+        return 1
+    fi
+    
+    # Mostrar información de la URL (sin mostrar la contraseña completa)
+    local masked_url=$(echo "$DATABASE_URL" | sed -E 's/(:[^:@]+)@/:*****@/')
+    log_debug "DATABASE_URL configurada: $masked_url"
+    
+    # Validar formato básico de PostgreSQL URL
+    if ! echo "$DATABASE_URL" | grep -qE '^postgres(ql)?://'; then
+        log_error "DATABASE_URL no tiene formato válido de PostgreSQL"
+        log_error "Formato esperado: postgresql://user:password@host:port/database"
+        return 1
+    fi
+    
+    # Extraer componentes de la URL para validación
+    local db_user=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://([^:]+):.*|\2|')
+    local db_host=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^@]+@([^:/]+).*|\2|')
+    local db_port=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^@]+@[^:]+:([0-9]+).*|\2|')
+    local db_name=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^/]+/([^?]+).*|\2|')
+    
+    log_debug "Usuario: $db_user"
+    log_debug "Host: $db_host"
+    log_debug "Puerto: $db_port"
+    log_debug "Base de datos: $db_name"
+    
+    # Validar que los componentes no estén vacíos
+    if [ -z "$db_user" ] || [ -z "$db_host" ] || [ -z "$db_port" ] || [ -z "$db_name" ]; then
+        log_error "No se pudieron extraer todos los componentes de DATABASE_URL"
+        return 1
+    fi
+    
+    log_success "DATABASE_URL validada correctamente"
+    return 0
+}
+
 # Detectar comando Prisma disponible
 detect_prisma_cmd() {
     if [ -f "node_modules/.bin/prisma" ]; then
@@ -41,51 +86,102 @@ detect_prisma_cmd() {
     fi
 }
 
-# Verificar conexión a la base de datos
-check_database_connection() {
-    log_info "Verificando conexión a la base de datos..."
+# Verificar conexión a la base de datos usando psql
+check_database_connection_psql() {
+    log_info "Verificando conectividad con PostgreSQL usando psql..."
     
-    if [ -z "$DATABASE_URL" ]; then
-        log_error "DATABASE_URL no está configurada"
-        return 1
-    fi
+    # Extraer componentes de DATABASE_URL
+    local db_user=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://([^:]+):.*|\2|')
+    local db_pass=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^:]+:([^@]+)@.*|\2|')
+    local db_host=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^@]+@([^:/]+).*|\2|')
+    local db_port=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^@]+@[^:]+:([0-9]+).*|\2|')
+    local db_name=$(echo "$DATABASE_URL" | sed -E 's|^postgres(ql)?://[^/]+/([^?]+).*|\2|')
     
-    # Intentar conectar con un timeout
     local max_attempts=30
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
-        if echo "SELECT 1;" | $PRISMA_CMD db execute --stdin > /dev/null 2>&1; then
-            log_success "Conexión a la base de datos establecida"
+        log_debug "Intento $attempt/$max_attempts - Conectando a PostgreSQL..."
+        
+        # Intentar conexión con psql
+        if PGPASSWORD="$db_pass" psql -h "$db_host" -p "$db_port" -U "$db_user" -d "$db_name" -c "SELECT 1;" > /dev/null 2>&1; then
+            log_success "Conexión a PostgreSQL establecida correctamente"
             return 0
         fi
         
-        log_warning "Intento $attempt/$max_attempts - Esperando conexión a la base de datos..."
-        sleep 2
+        if [ $attempt -lt $max_attempts ]; then
+            log_warning "Esperando a que PostgreSQL esté disponible... ($attempt/$max_attempts)"
+            sleep 2
+        fi
+        
         attempt=$((attempt + 1))
     done
     
-    log_error "No se pudo conectar a la base de datos después de $max_attempts intentos"
+    log_error "No se pudo conectar a PostgreSQL después de $max_attempts intentos"
+    log_error "Verifica que:"
+    log_error "  1. El servidor PostgreSQL esté ejecutándose"
+    log_error "  2. Las credenciales sean correctas"
+    log_error "  3. El host y puerto sean accesibles"
+    log_error "  4. La base de datos exista"
     return 1
+}
+
+# Verificar conexión a la base de datos usando Prisma
+check_database_connection() {
+    log_info "Verificando conexión con Prisma..."
+    
+    if [ -z "${DATABASE_URL:-}" ]; then
+        log_error "DATABASE_URL no está configurada"
+        return 1
+    fi
+    
+    # Intentar conectar con Prisma
+    local max_attempts=5
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        log_debug "Intento $attempt/$max_attempts - Verificando con Prisma..."
+        
+        if $PRISMA_CMD db execute --stdin <<EOF > /dev/null 2>&1
+SELECT 1;
+EOF
+        then
+            log_success "Prisma puede conectarse a la base de datos"
+            return 0
+        fi
+        
+        if [ $attempt -lt $max_attempts ]; then
+            log_warning "Reintentando conexión con Prisma... ($attempt/$max_attempts)"
+            sleep 2
+        fi
+        
+        attempt=$((attempt + 1))
+    done
+    
+    log_warning "Prisma no pudo verificar la conexión, pero continuaremos"
+    return 0
 }
 
 # Ejecutar migraciones de Prisma
 run_migrations() {
     log_info "Ejecutando migraciones de Prisma..."
     
-    # Usar db push para sincronizar el esquema (más seguro para producción)
-    if $PRISMA_CMD db push --accept-data-loss --skip-generate 2>&1; then
-        log_success "Esquema de base de datos sincronizado correctamente"
+    # Primero intentar migrate deploy (recomendado para producción)
+    log_debug "Intentando migrate deploy..."
+    if $PRISMA_CMD migrate deploy 2>&1 | tee /tmp/migrate-deploy.log; then
+        log_success "Migraciones aplicadas correctamente con migrate deploy"
         return 0
     else
-        log_warning "Error al sincronizar esquema, intentando con migrate deploy..."
+        log_warning "migrate deploy falló, intentando con db push..."
         
-        # Fallback a migrate deploy si db push falla
-        if $PRISMA_CMD migrate deploy 2>&1; then
-            log_success "Migraciones aplicadas correctamente"
+        # Fallback a db push si migrate deploy falla
+        log_debug "Intentando db push..."
+        if $PRISMA_CMD db push --accept-data-loss --skip-generate 2>&1 | tee /tmp/db-push.log; then
+            log_success "Esquema de base de datos sincronizado correctamente con db push"
             return 0
         else
-            log_error "Error al aplicar migraciones"
+            log_error "Error al aplicar migraciones con ambos métodos"
+            log_error "Revisa los logs en /tmp/migrate-deploy.log y /tmp/db-push.log"
             return 1
         fi
     fi
@@ -95,11 +191,20 @@ run_migrations() {
 generate_prisma_client() {
     log_info "Generando cliente Prisma..."
     
-    if $PRISMA_CMD generate 2>&1; then
+    if $PRISMA_CMD generate 2>&1 | tee /tmp/prisma-generate.log; then
         log_success "Cliente Prisma generado correctamente"
+        
+        # Verificar que el cliente se generó correctamente
+        if [ -d "node_modules/.prisma/client" ]; then
+            log_success "Cliente Prisma verificado en node_modules/.prisma/client"
+        else
+            log_warning "Cliente Prisma generado pero no encontrado en ubicación esperada"
+        fi
+        
         return 0
     else
         log_error "Error al generar cliente Prisma"
+        log_error "Revisa el log en /tmp/prisma-generate.log"
         return 1
     fi
 }
@@ -108,9 +213,12 @@ generate_prisma_client() {
 is_database_empty() {
     log_info "Verificando si la base de datos necesita seed..."
     
-    # Contar usuarios en la base de datos
+    # Verificar si la tabla users existe y tiene datos
     local user_count
-    user_count=$(echo "SELECT COUNT(*) FROM users;" | $PRISMA_CMD db execute --stdin 2>/dev/null | tail -n 1 | tr -d ' ')
+    user_count=$($PRISMA_CMD db execute --stdin <<EOF 2>/dev/null | tail -n 1 | tr -d ' '
+SELECT COUNT(*) FROM users;
+EOF
+)
     
     if [ -z "$user_count" ] || [ "$user_count" = "0" ]; then
         log_info "Base de datos vacía - se ejecutará el seed"
@@ -164,7 +272,10 @@ configure_master_password() {
     
     # Verificar si ya existe configuración de master admin
     local config_exists
-    config_exists=$(echo "SELECT COUNT(*) FROM master_admin_config WHERE id = 'singleton';" | $PRISMA_CMD db execute --stdin 2>/dev/null | tail -n 1 | tr -d ' ')
+    config_exists=$($PRISMA_CMD db execute --stdin <<EOF 2>/dev/null | tail -n 1 | tr -d ' '
+SELECT COUNT(*) FROM master_admin_config WHERE id = 'singleton';
+EOF
+)
     
     if [ -n "$config_exists" ] && [ "$config_exists" != "0" ]; then
         log_info "Configuración de Master Admin ya existe - omitiendo"
@@ -181,7 +292,12 @@ configure_master_password() {
     local master_hash="${MASTER_PASSWORD_HASH:-$default_hash}"
     
     # Insertar configuración en la base de datos
-    if echo "INSERT INTO master_admin_config (id, password_hash, created_at, updated_at, last_password_change) VALUES ('singleton', '$master_hash', NOW(), NOW(), NOW()) ON CONFLICT (id) DO NOTHING;" | $PRISMA_CMD db execute --stdin 2>&1; then
+    if $PRISMA_CMD db execute --stdin <<EOF 2>&1
+INSERT INTO master_admin_config (id, password_hash, created_at, updated_at, last_password_change) 
+VALUES ('singleton', '$master_hash', NOW(), NOW(), NOW()) 
+ON CONFLICT (id) DO NOTHING;
+EOF
+    then
         log_success "Configuración de Master Admin creada correctamente"
         log_info "═══════════════════════════════════════════════════════"
         log_info "🔐 Master Admin Panel configurado"
@@ -220,54 +336,70 @@ main() {
     log_info "Iniciando proceso de inicialización..."
     echo ""
     
-    # 1. Detectar comando Prisma
+    # 1. Validar DATABASE_URL
+    if ! validate_database_url; then
+        log_error "DATABASE_URL no es válida - no se puede continuar"
+        log_error "Asegúrate de configurar DATABASE_URL correctamente"
+        log_error "Formato: postgresql://user:password@host:port/database"
+        exit 1
+    fi
+    echo ""
+    
+    # 2. Detectar comando Prisma
     PRISMA_CMD=$(detect_prisma_cmd)
     log_info "Comando Prisma: $PRISMA_CMD"
     echo ""
     
-    # 2. Verificar conexión a la base de datos
-    if ! check_database_connection; then
-        log_error "No se pudo establecer conexión con la base de datos"
-        log_warning "Continuando con el inicio de la aplicación..."
-    else
+    # 3. Verificar conexión a PostgreSQL usando psql
+    if ! check_database_connection_psql; then
+        log_error "No se pudo establecer conexión con PostgreSQL"
+        log_error "Verifica la configuración de DATABASE_URL y que PostgreSQL esté ejecutándose"
+        exit 1
+    fi
+    echo ""
+    
+    # 4. Verificar conexión con Prisma
+    check_database_connection
+    echo ""
+    
+    # 5. Ejecutar migraciones
+    if run_migrations; then
         echo ""
         
-        # 3. Ejecutar migraciones
-        if run_migrations; then
+        # 6. Generar cliente Prisma
+        if generate_prisma_client; then
             echo ""
             
-            # 4. Generar cliente Prisma
-            if generate_prisma_client; then
+            # 7. Verificar si necesita seed (solo si la BD está vacía)
+            if is_database_empty; then
                 echo ""
-                
-                # 5. Verificar si necesita seed (solo si la BD está vacía)
-                if is_database_empty; then
-                    echo ""
-                    run_seed
-                    echo ""
-                fi
-                
-                # 6. Configurar master password (idempotente)
-                configure_master_password
+                run_seed
                 echo ""
-            else
-                log_warning "Error al generar cliente Prisma - continuando..."
             fi
+            
+            # 8. Configurar master password (idempotente)
+            configure_master_password
+            echo ""
         else
-            log_warning "Error en migraciones - continuando con inicio de aplicación..."
+            log_error "Error al generar cliente Prisma - no se puede continuar"
+            exit 1
         fi
+    else
+        log_error "Error en migraciones - no se puede continuar"
+        log_error "Revisa los logs de migración para más detalles"
+        exit 1
     fi
     
-    # 7. Verificar archivos de Next.js
+    # 9. Verificar archivos de Next.js
     echo ""
     if ! verify_nextjs_files; then
         log_error "Archivos de Next.js no encontrados - no se puede iniciar"
         exit 1
     fi
     
-    # 8. Iniciar aplicación Next.js
+    # 10. Iniciar aplicación Next.js
     echo ""
-    log_success "Inicialización completada - iniciando aplicación..."
+    log_success "Inicialización completada exitosamente - iniciando aplicación..."
     echo "════════════════════════════════════════════════════════════════"
     echo "🎯 Iniciando servidor Next.js standalone"
     echo "   📂 Working directory: /app"
