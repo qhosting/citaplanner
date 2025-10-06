@@ -47,6 +47,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Instalar herramientas de diagnóstico de red para el entrypoint
+RUN apk add --no-cache postgresql-client bind-tools netcat-openbsd
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
