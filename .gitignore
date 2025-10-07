@@ -53,3 +53,10 @@ prisma/migrations/*_init/
 
 # OS
 Thumbs.db
+
+# Phase 2 additions
+app/.build/
+app/.next/
+app/node_modules/
+app/yarn.lock
+*.backup
