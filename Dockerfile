@@ -32,7 +32,7 @@ RUN chmod +x build-with-standalone.sh
 # Build the application with standalone output - FORCE REBUILD NO CACHE
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_OUTPUT_MODE=standalone
-ENV BUILD_TIMESTAMP=20251007_VERBOSE_LOGGING_DEBUG
+ENV BUILD_TIMESTAMP=20251007_FINAL_FIX_STANDALONE
 RUN echo "========================================" && \
     echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && \
     echo "========================================" && \

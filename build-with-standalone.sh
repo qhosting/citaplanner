@@ -32,56 +32,11 @@ echo "🔍 Checking Node and Yarn versions..."
 node --version || { echo "❌ FATAL: Node not found"; exit 1; }
 yarn --version || { echo "❌ FATAL: Yarn not found"; exit 1; }
 
-# Force standalone output configuration
-echo "=========================================="
-echo "🔧 Configuring Next.js for standalone output..."
-echo "=========================================="
-
-echo "📄 Current next.config.js content:"
-cat next.config.js
-
-node -e "
-const fs = require('fs');
-const path = require('path');
-
-try {
-  console.log('🔧 Reading next.config.js...');
-  const configPath = './next.config.js';
-  let content = fs.readFileSync(configPath, 'utf8');
-
-  console.log('📋 Original config output setting:', content.match(/output.*,/));
-
-  // Force standalone output
-  content = content.replace(
-    /output:\s*process\.env\.NEXT_OUTPUT_MODE,?/g,
-    'output: \\'standalone\\','
-  );
-
-  // Ensure standalone is set
-  if (!content.includes('output:')) {
-    content = content.replace(
-      'const nextConfig = {',
-      'const nextConfig = {\n  output: \\'standalone\\','
-    );
-  }
-
-  fs.writeFileSync(configPath, content);
-  console.log('✅ Next.js config updated for standalone output');
-  
-  // Verify the change
-  const updatedContent = fs.readFileSync(configPath, 'utf8');
-  console.log('📋 Updated config output setting:', updatedContent.match(/output.*,/));
-} catch (error) {
-  console.error('❌ FATAL ERROR in config update:', error);
-  process.exit(1);
-}
-" || { echo "❌ FATAL: Config update failed"; exit 1; }
-
-# Verify the configuration
+# Verify Next.js configuration
 echo "=========================================="
 echo "🔍 Verifying Next.js configuration..."
 echo "=========================================="
-echo "📄 Updated next.config.js content:"
+echo "📄 Current next.config.js content:"
 cat next.config.js
 grep -n "output:" next.config.js || echo "⚠️ Output config not found in grep"
 
