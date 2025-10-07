@@ -88,6 +88,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
+# Copy scripts folder for seed execution
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+
+# Copy essential node_modules for seed execution (bcryptjs, tsx, etc.)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/dotenv ./node_modules/dotenv
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/typescript ./node_modules/typescript
+
 # Copiar scripts de inicio
 COPY --chown=nextjs:nodejs start.sh ./
 RUN chmod +x start.sh

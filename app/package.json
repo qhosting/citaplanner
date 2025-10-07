@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "generate-hash": "tsx scripts/generate-master-hash.ts",
-    "prisma": "npx tsx scripts/seed.ts"
+    "prisma": "npx tsx scripts/seed.ts",
+    "seed": "tsx --require dotenv/config scripts/seed.ts"
   },
   "prisma": {
     "seed": "npx tsx --require dotenv/config scripts/seed.ts"
