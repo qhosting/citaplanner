@@ -98,10 +98,9 @@ RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
 # This is needed for database seeding via npm run prisma db seed
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
-# Copy tsx and related dependencies needed for running TypeScript seed scripts
-# tsx is required by npm run prisma db seed command
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/dotenv ./node_modules/dotenv
+# Note: tsx and dotenv are now in dependencies (not devDependencies)
+# so they will be included automatically in the standalone build with all their dependencies
+# This ensures get-tsconfig and other tsx dependencies are properly included
 
 # Verify entrypoint scripts and seed directory are present in runner stage
 RUN echo "=== RUNNER STAGE VERIFICATION ===" && \
@@ -114,9 +113,10 @@ RUN echo "=== RUNNER STAGE VERIFICATION ===" && \
     echo "Verifying scripts directory for seed:" && \
     ls -la /app/scripts/ && \
     test -f /app/scripts/seed.ts && echo "✅ seed.ts found at /app/scripts/seed.ts" || echo "❌ seed.ts NOT found" && \
-    echo "Verifying tsx and dependencies:" && \
+    echo "Verifying tsx and dependencies (should be in standalone build):" && \
     test -d /app/node_modules/tsx && echo "✅ tsx module found" || echo "❌ tsx module NOT found" && \
     test -d /app/node_modules/dotenv && echo "✅ dotenv module found" || echo "❌ dotenv module NOT found" && \
+    test -d /app/node_modules/get-tsconfig && echo "✅ get-tsconfig (tsx dependency) found" || echo "❌ get-tsconfig NOT found" && \
     echo "✅ All entrypoint scripts, seed directory, and dependencies verified in runner stage"
 
 # Create writable directory for Prisma with correct permissions
