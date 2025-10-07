@@ -111,6 +111,9 @@ model Tenant {
   appointments Appointment[]
   payments    Payment[]
   clientUsers ClientUser[]
+  serviceCategories ServiceCategory[] // Phase 1
+  notificationTemplates NotificationTemplate[] // Phase 1
+  notificationLogs NotificationLog[] // Phase 1
   
   @@map("tenants")
 }
@@ -170,8 +173,29 @@ model User {
   payments    Payment[]
   workingHours WorkingHours[]
   serviceUsers ServiceUser[]
+  notificationLogs NotificationLog[] // Phase 1
   
   @@map("users")
+}
+
+// Categorías de servicios (Phase 1)
+model ServiceCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#3B82F6")
+  isActive    Boolean  @default(true)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  services    Service[]
+  
+  @@map("service_categories")
 }
 
 // Servicios ofrecidos
@@ -186,6 +210,9 @@ model Service {
   
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  categoryId  String?  // Optional category (Phase 1)
+  category    ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -251,6 +278,9 @@ model Appointment {
   notes       String?
   isOnline    Boolean           @default(false) // True si fue creada por el portal online
   
+  // Phase 1: Notification tracking (optional, non-breaking)
+  notificationsSent Boolean       @default(false)
+  
   tenantId    String
   tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   
@@ -271,6 +301,7 @@ model Appointment {
   
   // Relations
   payments    Payment[]
+  notificationLogs NotificationLog[] // Phase 1
   
   @@map("appointments")
 }
@@ -346,6 +377,67 @@ model ClientUser {
   updatedAt   DateTime  @updatedAt
   
   @@map("client_users")
+}
+
+// Phase 1: Notification System
+
+enum NotificationType {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  DELIVERED
+}
+
+// Plantillas de notificaciones
+model NotificationTemplate {
+  id          String           @id @default(cuid())
+  name        String
+  type        NotificationType
+  subject     String?          // Para emails
+  body        String           @db.Text
+  variables   String?          @db.Text // JSON con variables disponibles
+  isActive    Boolean          @default(true)
+  
+  tenantId    String
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  @@map("notification_templates")
+}
+
+// Registro de notificaciones enviadas
+model NotificationLog {
+  id            String             @id @default(cuid())
+  type          NotificationType
+  recipient     String             // Email, phone number, or WhatsApp number
+  subject       String?
+  message       String             @db.Text
+  status        NotificationStatus @default(PENDING)
+  error         String?            @db.Text
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  
+  tenantId      String
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId        String?            // Usuario que recibe la notificación
+  user          User?              @relation(fields: [userId], references: [id])
+  
+  appointmentId String?            // Cita relacionada
+  appointment   Appointment?       @relation(fields: [appointmentId], references: [id])
+  
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  
+  @@map("notification_logs")
 }
 
 // Configuración del Master Admin
