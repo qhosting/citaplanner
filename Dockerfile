@@ -50,7 +50,15 @@ RUN if [ ! -d ".next/standalone" ]; then \
     echo "✅ Standalone build verified"
 
 # ============================================
-# Stage 3: Imagen de producción
+# Stage 3: Copiar archivos públicos desde root
+# ============================================
+FROM base AS public-files
+WORKDIR /app
+# Copiar directorio public desde la raíz del repositorio
+COPY public ./public
+
+# ============================================
+# Stage 4: Imagen de producción
 # ============================================
 FROM base AS runner
 WORKDIR /app
@@ -62,8 +70,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copiar archivos públicos
-COPY --from=builder /app/public ./public
+# Copiar archivos públicos desde el stage public-files
+COPY --from=public-files /app/public ./public
 
 # Crear directorio .next con permisos correctos
 RUN mkdir .next && chown nextjs:nodejs .next
