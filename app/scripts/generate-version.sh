@@ -1,8 +1,9 @@
 
-#!/bin/bash
+#!/bin/sh
 
 # Script para generar información de versión en tiempo de build
 # Este script captura el commit SHA y la fecha de build
+# Compatible con POSIX sh (Alpine Linux)
 
 set -e  # Exit on error, but we'll handle errors explicitly
 
