@@ -44,30 +44,29 @@ grep -n "output:" next.config.js || echo "⚠️ Output config not found"
 echo "🏗️ Starting Next.js build..."
 yarn build
 
-# Determine the build directory (could be .next or .build based on NEXT_DIST_DIR)
-BUILD_DIR="${NEXT_DIST_DIR:-.next}"
-
 # Verify standalone directory was created
-if [ -d "$BUILD_DIR/standalone" ]; then
-    echo "✅ Standalone build successful! Directory created at $BUILD_DIR/standalone"
-    echo "📋 Contents of $BUILD_DIR/standalone:"
-    ls -la "$BUILD_DIR/standalone"
+if [ -d ".next/standalone" ]; then
+    echo "✅ Standalone build successful! Directory created."
+    echo "📋 Contents of .next/standalone:"
+    ls -la .next/standalone
     
-    # Verify server.js exists (could be in standalone/ or standalone/app/)
-    if [ -f "$BUILD_DIR/standalone/server.js" ] || [ -f "$BUILD_DIR/standalone/app/server.js" ]; then
+    # Verify server.js exists specifically
+    if [ -f ".next/standalone/server.js" ]; then
         echo "✅ server.js found in standalone directory!"
-        find "$BUILD_DIR/standalone" -name "server.js" -type f -exec ls -la {} \;
+        ls -la .next/standalone/server.js
+        echo "📋 File permissions and owner:"
+        stat .next/standalone/server.js
     else
         echo "❌ ERROR: server.js NOT FOUND in standalone directory!"
-        echo "📋 Searching for server.js anywhere in $BUILD_DIR:"
-        find "$BUILD_DIR" -name "server.js" -type f | head -5
+        echo "📋 Searching for server.js anywhere in .next:"
+        find .next -name "server.js" -type f | head -5
     fi
     
-    echo "📋 Complete structure of $BUILD_DIR/standalone:"
-    find "$BUILD_DIR/standalone" -type f | head -20
+    echo "📋 Complete structure of .next/standalone:"
+    find .next/standalone -type f | head -20
 else
     echo "❌ ERROR: Standalone directory not created!"
-    ls -la "$BUILD_DIR/" || ls -la .
+    ls -la .next/
     exit 1
 fi
 
