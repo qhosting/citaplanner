@@ -1,5 +1,5 @@
 
-# Multi-stage build para optimizar el tamaño de la imagen
+# Multi-stage build optimizado para Easypanel
 FROM node:18-alpine AS base
 
 # Instalar dependencias necesarias para Prisma y Alpine
@@ -10,82 +10,87 @@ WORKDIR /app
 # Configurar yarn para usar cache
 ENV YARN_CACHE_FOLDER=/app/.yarn-cache
 
-# Instalar dependencias
+# ============================================
+# Stage 1: Instalar dependencias
+# ============================================
 FROM base AS deps
 COPY app/package.json app/yarn.lock* ./
 RUN --mount=type=cache,target=/app/.yarn-cache \
-    yarn install --production=false
+    yarn install --frozen-lockfile
 
-# Rebuild the source code only when needed
+# ============================================
+# Stage 2: Build de la aplicación
+# ============================================
 FROM base AS builder
 WORKDIR /app
+
+# Copiar dependencias instaladas
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copiar código fuente
 COPY app/ .
 
-# Generate Prisma client with complete runtime
-RUN npx prisma generate --generator client
+# Generar cliente Prisma
+RUN npx prisma generate
 
-# Copy and prepare the standalone build script
-COPY build-with-standalone.sh ./
-RUN chmod +x build-with-standalone.sh
-
-# Build the application with standalone output - FORCE REBUILD NO CACHE
+# Build de Next.js con standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_OUTPUT_MODE=standalone
-ENV BUILD_TIMESTAMP=20251007_FINAL_FIX_STANDALONE
-RUN echo "========================================" && \
-    echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && \
-    echo "========================================" && \
-    ls -la build-with-standalone.sh && \
-    ./build-with-standalone.sh
+ENV NODE_ENV=production
 
-# Production image, copy all the files and run next
+RUN echo "🏗️  Building Next.js with standalone output..." && \
+    yarn build && \
+    echo "✅ Build completed successfully"
+
+# Verificar que standalone fue creado correctamente
+RUN if [ ! -d ".next/standalone" ]; then \
+        echo "❌ ERROR: Standalone directory not created!"; \
+        ls -la .next/; \
+        exit 1; \
+    fi && \
+    echo "✅ Standalone build verified"
+
+# ============================================
+# Stage 3: Imagen de producción
+# ============================================
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Crear usuario no-root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Copy built application
+# Copiar archivos públicos
 COPY --from=builder /app/public ./public
 
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Crear directorio .next con permisos correctos
+RUN mkdir .next && chown nextjs:nodejs .next
 
-# Automatically leverage output traces to reduce image size
-# CRITICAL: Copy from standalone/app/* because outputFileTracingRoot creates nested structure
+# Copiar el build standalone
+# IMPORTANTE: Next.js standalone crea estructura app/* por outputFileTracingRoot
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/app ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma files with CORRECT PERMISSIONS - COMPLETE RUNTIME + CLI
+# Copiar archivos de Prisma con permisos correctos
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
-# Copy start scripts with CORRECT PERMISSIONS
+# Copiar scripts de inicio
 COPY --chown=nextjs:nodejs start.sh ./
-COPY --chown=nextjs:nodejs emergency-start.sh ./
-RUN chmod +x start.sh emergency-start.sh
+RUN chmod +x start.sh
 
-# Create writable directory for Prisma with correct permissions
-RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
-RUN mkdir -p node_modules/@prisma && chown -R nextjs:nodejs node_modules/@prisma
-RUN mkdir -p node_modules/.bin && chown -R nextjs:nodejs node_modules/.bin
+# Crear directorios con permisos correctos
+RUN mkdir -p node_modules/.prisma node_modules/@prisma node_modules/.bin && \
+    chown -R nextjs:nodejs node_modules/.prisma node_modules/@prisma node_modules/.bin
 
-# Verify Prisma client installation - CRITICAL CHECKS
-RUN ls -la node_modules/@prisma/ || echo "⚠️  @prisma directory missing"
-RUN ls -la node_modules/.prisma/ || echo "⚠️  .prisma directory missing"
-RUN ls -la node_modules/prisma/ || echo "⚠️  prisma directory missing"
-
-# Verify Prisma CLI is available in node_modules/.bin - MUST EXIST
-RUN ls -la node_modules/.bin/ || echo "⚠️  .bin directory missing"
-RUN ls -la node_modules/.bin/prisma && echo "✅ Prisma CLI found in .bin" || echo "❌ CRITICAL: prisma CLI not found in .bin"
+# Verificar instalación de Prisma
+RUN echo "🔍 Verificando instalación de Prisma..." && \
+    ls -la node_modules/.bin/prisma && echo "✅ Prisma CLI encontrado" || echo "⚠️  Prisma CLI no encontrado"
 
 USER nextjs
 
@@ -94,6 +99,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Start with our custom script
+# Iniciar aplicación
 CMD ["./start.sh"]
-
