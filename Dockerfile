@@ -7,16 +7,17 @@ RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# Configurar yarn para usar cache
-ENV YARN_CACHE_FOLDER=/app/.yarn-cache
+# Configurar npm para usar cache
+ENV NPM_CONFIG_CACHE=/app/.npm-cache
 
 # ============================================
 # Stage 1: Instalar dependencias
 # ============================================
 FROM base AS deps
-COPY app/package.json app/yarn.lock* ./
-RUN --mount=type=cache,target=/app/.yarn-cache \
-    yarn install --frozen-lockfile
+COPY app/package.json app/package-lock.json* ./
+RUN --mount=type=cache,target=/app/.npm-cache \
+    npm ci --only=production --ignore-scripts && \
+    npm ci --ignore-scripts
 
 # ============================================
 # Stage 2: Build de la aplicación
@@ -38,7 +39,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 RUN echo "🏗️  Building Next.js with standalone output..." && \
-    yarn build && \
+    npm run build && \
     echo "✅ Build completed successfully"
 
 # Verificar que standalone fue creado correctamente
