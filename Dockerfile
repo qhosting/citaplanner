@@ -18,25 +18,9 @@ RUN --mount=type=cache,target=/app/.yarn-cache \
 
 # Rebuild the source code only when needed
 FROM base AS builder
-
-# Instalar git para el script de versión
-RUN apk add --no-cache git bash
-
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY app/ .
-COPY public/ ./public/
-
-# Copy entrypoint scripts to builder stage (they're now in app/ directory)
-# This ensures they're available in the builder stage for copying to runner stage
-# Verify the scripts are present and show their full paths
-RUN echo "=== Verifying entrypoint scripts in builder stage ===" && \
-    ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && \
-    echo "✅ Entrypoint scripts found in builder stage at /app/" && \
-    echo "=== Checking if scripts have correct shebang ===" && \
-    head -1 /app/docker-entrypoint.sh && \
-    echo "=== Builder stage /app directory contents ===" && \
-    ls -la /app/ | head -20
 
 # Generate Prisma client with complete runtime
 RUN npx prisma generate --generator client
@@ -48,7 +32,7 @@ RUN chmod +x build-with-standalone.sh
 # Build the application with standalone output - FORCE REBUILD NO CACHE
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_OUTPUT_MODE=standalone
-ENV BUILD_TIMESTAMP=20251001_CITAPLANNER_DEPLOYMENT
+ENV BUILD_TIMESTAMP=20251007_CITAPLANNER_EASYPANEL_FIX
 RUN echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && ./build-with-standalone.sh
 
 # Production image, copy all the files and run next
@@ -57,10 +41,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# CRITICAL: Install bash first - required for entrypoint script execution
-# Also install diagnostic tools for network troubleshooting
-RUN apk add --no-cache bash postgresql-client bind-tools netcat-openbsd coreutils
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -84,40 +64,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
-# CRITICAL FIX: Copy entrypoint scripts AFTER standalone output
-# The standalone output at /app/.next/standalone/app contains the built app
-# but NOT our custom scripts. We must copy them from the builder stage
-# where they exist at /app/ (from "COPY app/ ." command)
-COPY --from=builder --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh
-COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
-COPY --from=builder --chown=nextjs:nodejs /app/emergency-start.sh ./emergency-start.sh
-RUN chmod +x docker-entrypoint.sh start.sh emergency-start.sh
-
-# CRITICAL FIX: Copy scripts directory for seed functionality
-# The standalone output doesn't include the scripts directory which contains seed.ts
-# This is needed for database seeding via npm run prisma db seed
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
-
-# Note: tsx and dotenv are now in dependencies (not devDependencies)
-# so they will be included automatically in the standalone build with all their dependencies
-# This ensures get-tsconfig and other tsx dependencies are properly included
-
-# Verify entrypoint scripts and seed directory are present in runner stage
-RUN echo "=== RUNNER STAGE VERIFICATION ===" && \
-    echo "Checking entrypoint scripts:" && \
-    ls -la /app/docker-entrypoint.sh /app/start.sh /app/emergency-start.sh && \
-    echo "Verifying bash installation:" && \
-    which bash && bash --version | head -1 && \
-    echo "Checking script shebang:" && \
-    head -1 /app/docker-entrypoint.sh && \
-    echo "Verifying scripts directory for seed:" && \
-    ls -la /app/scripts/ && \
-    test -f /app/scripts/seed.ts && echo "✅ seed.ts found at /app/scripts/seed.ts" || echo "❌ seed.ts NOT found" && \
-    echo "Verifying tsx and dependencies (should be in standalone build):" && \
-    test -d /app/node_modules/tsx && echo "✅ tsx module found" || echo "❌ tsx module NOT found" && \
-    test -d /app/node_modules/dotenv && echo "✅ dotenv module found" || echo "❌ dotenv module NOT found" && \
-    test -d /app/node_modules/get-tsconfig && echo "✅ get-tsconfig (tsx dependency) found" || echo "❌ get-tsconfig NOT found" && \
-    echo "✅ All entrypoint scripts, seed directory, and dependencies verified in runner stage"
+# Copy start scripts with CORRECT PERMISSIONS
+COPY --chown=nextjs:nodejs start.sh ./
+COPY --chown=nextjs:nodejs emergency-start.sh ./
+RUN chmod +x start.sh emergency-start.sh
 
 # Create writable directory for Prisma with correct permissions
 RUN mkdir -p node_modules/.prisma && chown -R nextjs:nodejs node_modules/.prisma
@@ -135,19 +85,11 @@ RUN ls -la node_modules/.bin/prisma && echo "✅ Prisma CLI found in .bin" || ec
 
 USER nextjs
 
-# Final verification as nextjs user - ensure the script is accessible and executable
-RUN echo "=== FINAL VERIFICATION AS NEXTJS USER ===" && \
-    ls -la /app/docker-entrypoint.sh && \
-    test -x /app/docker-entrypoint.sh && echo "✅ Script is executable by nextjs user" || echo "❌ Script is NOT executable by nextjs user" && \
-    test -r /app/docker-entrypoint.sh && echo "✅ Script is readable by nextjs user" || echo "❌ Script is NOT readable by nextjs user"
-
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Use ENTRYPOINT to run the initialization script
-# The script has #!/bin/bash shebang and ends with "exec node server.js"
-# This ensures proper process replacement and signal handling
-# Using absolute path to avoid "no such file or directory" errors
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# Start with our custom script
+CMD ["./start.sh"]
+
