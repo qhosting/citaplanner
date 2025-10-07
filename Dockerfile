@@ -16,8 +16,7 @@ ENV NPM_CONFIG_CACHE=/app/.npm-cache
 FROM base AS deps
 COPY app/package.json app/package-lock.json* ./
 RUN --mount=type=cache,target=/app/.npm-cache \
-    npm ci --only=production --ignore-scripts && \
-    npm ci --ignore-scripts
+    npm ci --legacy-peer-deps --ignore-scripts
 
 # ============================================
 # Stage 2: Build de la aplicación
