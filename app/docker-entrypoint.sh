@@ -330,8 +330,8 @@ run_seed() {
         return 1
     fi
     
-    # Ejecutar seed usando el comando definido en package.json
-    if npx tsx scripts/seed.ts 2>&1; then
+    # Ejecutar seed usando Prisma's seed command (usa la configuración de package.json)
+    if eval "$PRISMA_CMD db seed" 2>&1; then
         log_success "Seed ejecutado correctamente"
         log_info "═══════════════════════════════════════════════════════"
         log_info "📋 Datos de ejemplo creados:"
