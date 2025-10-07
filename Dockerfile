@@ -32,8 +32,12 @@ RUN chmod +x build-with-standalone.sh
 # Build the application with standalone output - FORCE REBUILD NO CACHE
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_OUTPUT_MODE=standalone
-ENV BUILD_TIMESTAMP=20251007_CITAPLANNER_EASYPANEL_FIX
-RUN echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && ./build-with-standalone.sh
+ENV BUILD_TIMESTAMP=20251007_VERBOSE_LOGGING_DEBUG
+RUN echo "========================================" && \
+    echo "Force rebuild timestamp: $BUILD_TIMESTAMP" && \
+    echo "========================================" && \
+    ls -la build-with-standalone.sh && \
+    ./build-with-standalone.sh
 
 # Production image, copy all the files and run next
 FROM base AS runner
