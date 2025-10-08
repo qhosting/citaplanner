@@ -37,11 +37,11 @@ import {
   MapPin,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import type { ClientProfile } from '@/lib/clients/types';
+import type { Client } from '@/lib/clients/types';
 
 export default function ClientsPage() {
   const router = useRouter();
-  const [clients, setClients] = useState<ClientProfile[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function ClientsPage() {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/clients/profiles');
+      const response = await fetch('/api/clients');
 
       if (!response.ok) {
         throw new Error('Error al cargar los clientes');
@@ -80,7 +80,7 @@ export default function ClientsPage() {
 
     try {
       setDeleting(true);
-      const response = await fetch(`/api/clients/profiles/${deletingClientId}`, {
+      const response = await fetch(`/api/clients/${deletingClientId}`, {
         method: 'DELETE',
       });
 
@@ -105,7 +105,7 @@ export default function ClientsPage() {
     }
   };
 
-  const getInitials = (client: ClientProfile) => {
+  const getInitials = (client: Client) => {
     const first = client.firstName?.charAt(0) || '';
     const last = client.lastName?.charAt(0) || '';
     return `${first}${last}`.toUpperCase() || 'CL';
