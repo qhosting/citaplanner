@@ -99,10 +99,10 @@ enum ReminderTime {
 }
 
 enum Gender {
-  MALE
-  FEMALE
-  OTHER
-  PREFER_NOT_TO_SAY
+  MASCULINO
+  FEMENINO
+  OTRO
+  PREFIERO_NO_DECIR
 }
 
 // Phase 3: Sales Module Enums
