@@ -42,15 +42,15 @@ export default function ProductsPage() {
   );
 
   const getStockStatus = (product: any) => {
-    if (product.stock <= 0) return { label: 'Out of Stock', variant: 'destructive' as const };
-    if (product.stock <= product.minStock) return { label: 'Low Stock', variant: 'warning' as const };
-    return { label: 'In Stock', variant: 'success' as const };
+    if (product.stock <= 0) return { label: 'Sin Stock', variant: 'destructive' as const };
+    if (product.stock <= product.minStock) return { label: 'Stock Bajo', variant: 'warning' as const };
+    return { label: 'En Stock', variant: 'success' as const };
   };
 
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Products</h1>
+        <h1 className="text-3xl font-bold">Productos</h1>
         <Button asChild>
           <Link href="/inventory/products/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -64,7 +64,7 @@ export default function ProductsPage() {
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products by name or SKU..."
+              placeholder="Buscar productos por nombre o SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
@@ -74,7 +74,7 @@ export default function ProductsPage() {
       </Card>
 
       {loading ? (
-        <div className="text-center py-12">Loading...</div>
+        <div className="text-center py-12">Cargando...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.map(product => {
@@ -129,10 +129,10 @@ export default function ProductsPage() {
                   </div>
                   <div className="flex gap-2 mt-4">
                     <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/inventory/products/${product.id}`}>View</Link>
+                      <Link href={`/inventory/products/${product.id}`}>Ver</Link>
                     </Button>
                     <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/inventory/products/${product.id}/edit`}>Edit</Link>
+                      <Link href={`/inventory/products/${product.id}/edit`}>Editar</Link>
                     </Button>
                   </div>
                 </CardContent>

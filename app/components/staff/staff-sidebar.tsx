@@ -42,7 +42,7 @@ export function StaffSidebar() {
   // Menú básico para todos los roles de staff
   const baseMenuItems = [
     {
-      title: 'Dashboard',
+      title: 'Panel de Control',
       href: '/staff',
       icon: BarChart3
     },

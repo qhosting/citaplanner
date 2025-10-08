@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button'
 
 const menuItems = [
   {
-    title: 'Dashboard',
+    title: 'Panel de Control',
     href: '/admin',
     icon: BarChart3
   },
