@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -12,8 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
+    const { id } = await params;
     const template = await prisma.notificationTemplate.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
     if (!template) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 });
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -33,9 +34,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const updatedTemplate = await prisma.notificationTemplate.update({
-      where: { id: params.id },
+      where: { id: id },
       data: body,
     });
     return NextResponse.json(updatedTemplate);
@@ -45,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -53,8 +55,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   try {
+    const { id } = await params;
     await prisma.notificationTemplate.delete({
-      where: { id: params.id },
+      where: { id: id },
     });
     return new NextResponse(null, { status: 204 });
   } catch (error: any) {

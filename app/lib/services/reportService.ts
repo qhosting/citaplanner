@@ -66,7 +66,7 @@ export class ReportService {
     const totalTax = filteredSales.reduce((sum, sale) => sum + sale.tax, 0);
 
     // Group by period if specified
-    let groupedData = [];
+    let groupedData: any[] = [];
     if (filters.groupBy) {
       const groups = new Map();
       

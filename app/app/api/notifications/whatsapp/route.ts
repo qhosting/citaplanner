@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     } else if (type === 'custom' && recipients && customMessage) {
       // Enviar mensaje personalizado
-      const results = []
+      const results: any[] = []
 
       for (const recipient of recipients) {
         let result

@@ -302,7 +302,7 @@ async function main() {
   console.log('✅ Clientes creados:', clients.length)
 
   // Crear horarios de trabajo
-  const workingHours = []
+  const workingHours: any[] = []
   // Horarios de lunes a viernes (1-5)
   for (let day = 1; day <= 5; day++) {
     workingHours.push(
