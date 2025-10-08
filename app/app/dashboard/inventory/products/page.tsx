@@ -23,12 +23,17 @@ export default function ProductsPage() {
   const loadProducts = async () => {
     try {
       const response = await fetch('/api/products?isActive=true');
-      const data = await response.json();
-      setProducts(data);
-    } catch (error) {
+      const result = await response.json();
+      
+      if (result.success) {
+        setProducts(result.data || []);
+      } else {
+        throw new Error(result.error || 'Failed to load products');
+      }
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to load products',
+        description: error.message || 'Failed to load products',
         variant: 'destructive',
       });
     } finally {
@@ -52,9 +57,9 @@ export default function ProductsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Productos</h1>
         <Button asChild>
-          <Link href="/inventory/products/new">
+          <Link href="/dashboard/inventory/products/new">
             <Plus className="mr-2 h-4 w-4" />
-            Add Product
+            Agregar Producto
           </Link>
         </Button>
       </div>
@@ -107,32 +112,32 @@ export default function ProductsPage() {
                       <span>{product.minStock}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Cost:</span>
+                      <span className="text-sm text-muted-foreground">Costo:</span>
                       <span>${product.costPrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Sale Price:</span>
+                      <span className="text-sm text-muted-foreground">Precio Venta:</span>
                       <span className="font-semibold">${product.salePrice.toFixed(2)}</span>
                     </div>
                     {product.category && (
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Category:</span>
+                        <span className="text-sm text-muted-foreground">Categoría:</span>
                         <span className="text-sm">{product.category.name}</span>
                       </div>
                     )}
                     {product.stock <= product.minStock && (
                       <div className="flex items-center gap-2 text-amber-600 text-sm pt-2">
                         <AlertTriangle className="h-4 w-4" />
-                        <span>Reorder needed</span>
+                        <span>Reabastecimiento necesario</span>
                       </div>
                     )}
                   </div>
                   <div className="flex gap-2 mt-4">
                     <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/inventory/products/${product.id}`}>Ver</Link>
+                      <Link href={`/dashboard/inventory/products/${product.id}`}>Ver</Link>
                     </Button>
                     <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/inventory/products/${product.id}/edit`}>Editar</Link>
+                      <Link href={`/dashboard/inventory/products/${product.id}/edit`}>Editar</Link>
                     </Button>
                   </div>
                 </CardContent>
@@ -145,7 +150,7 @@ export default function ProductsPage() {
       {!loading && filteredProducts.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No products found</p>
+            <p className="text-muted-foreground">No se encontraron productos</p>
           </CardContent>
         </Card>
       )}

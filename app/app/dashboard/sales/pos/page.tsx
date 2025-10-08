@@ -7,35 +7,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Plus, Trash2, ShoppingCart } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 
 interface CartItem {
   id: string;
-  itemType: 'SERVICE' | 'PRODUCT';
   name: string;
+  price: number;
   quantity: number;
-  unitPrice: number;
-  subtotal: number;
-  serviceId?: string;
-  productId?: string;
-  professionalId?: string;
-  commissionRate?: number;
+  type: 'product' | 'service';
 }
 
 export default function POSPage() {
-  const [loading, setLoading] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'OTRO'>('EFECTIVO');
+  const [selectedProfessional, setSelectedProfessional] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [discount, setDiscount] = useState(0);
-  const [tax, setTax] = useState(0);
-  const [notes, setNotes] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -45,16 +38,23 @@ export default function POSPage() {
   const loadData = async () => {
     try {
       const [productsRes, servicesRes, clientsRes, professionalsRes] = await Promise.all([
-        fetch('/api/products?isActive=true&type=SALE'),
-        fetch('/api/services?isActive=true'),
-        fetch('/api/clients?isActive=true'),
-        fetch('/api/users?role=PROFESSIONAL'),
+        fetch('/api/products?isActive=true'),
+        fetch('/api/services'),
+        fetch('/api/users?role=CLIENT'),
+        fetch('/api/users?role=STAFF'),
       ]);
 
-      setProducts(await productsRes.json());
-      setServices(await servicesRes.json());
-      setClients(await clientsRes.json());
-      setProfessionals(await professionalsRes.json());
+      const [productsData, servicesData, clientsData, professionalsData] = await Promise.all([
+        productsRes.json(),
+        servicesRes.json(),
+        clientsRes.json(),
+        professionalsRes.json(),
+      ]);
+
+      setProducts(productsData.success ? productsData.data : []);
+      setServices(servicesData.success ? servicesData.data : []);
+      setClients(clientsData.success ? clientsData.data : []);
+      setProfessionals(professionalsData.success ? professionalsData.data : []);
     } catch (error) {
       toast({
         title: 'Error',
@@ -65,68 +65,69 @@ export default function POSPage() {
   };
 
   const addProductToCart = (product: any) => {
-    const existingItem = cart.find(item => item.productId === product.id);
+    const existingItem = cart.find(item => item.id === product.id && item.type === 'product');
     
     if (existingItem) {
-      updateCartItemQuantity(existingItem.id, existingItem.quantity + 1);
+      setCart(cart.map(item =>
+        item.id === product.id && item.type === 'product'
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
     } else {
-      const newItem: CartItem = {
-        id: `cart-${Date.now()}`,
-        itemType: 'PRODUCT',
+      setCart([...cart, {
+        id: product.id,
         name: product.name,
+        price: product.salePrice,
         quantity: 1,
-        unitPrice: product.salePrice,
-        subtotal: product.salePrice,
-        productId: product.id,
-      };
-      setCart([...cart, newItem]);
+        type: 'product',
+      }]);
     }
   };
 
-  const addServiceToCart = (service: any, professionalId: string, commissionRate: number) => {
-    const newItem: CartItem = {
-      id: `cart-${Date.now()}`,
-      itemType: 'SERVICE',
-      name: service.name,
-      quantity: 1,
-      unitPrice: service.price,
-      subtotal: service.price,
-      serviceId: service.id,
-      professionalId,
-      commissionRate,
-    };
-    setCart([...cart, newItem]);
+  const addServiceToCart = (service: any) => {
+    const existingItem = cart.find(item => item.id === service.id && item.type === 'service');
+    
+    if (existingItem) {
+      setCart(cart.map(item =>
+        item.id === service.id && item.type === 'service'
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, {
+        id: service.id,
+        name: service.name,
+        price: service.price,
+        quantity: 1,
+        type: 'service',
+      }]);
+    }
   };
 
-  const updateCartItemQuantity = (itemId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(itemId);
-      return;
-    }
-
+  const updateQuantity = (id: string, type: 'product' | 'service', delta: number) => {
     setCart(cart.map(item => {
-      if (item.id === itemId) {
-        return {
-          ...item,
-          quantity,
-          subtotal: item.unitPrice * quantity,
-        };
+      if (item.id === id && item.type === type) {
+        const newQuantity = item.quantity + delta;
+        return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
       }
       return item;
-    }));
+    }).filter(item => item.quantity > 0));
   };
 
-  const removeFromCart = (itemId: string) => {
-    setCart(cart.filter(item => item.id !== itemId));
+  const removeFromCart = (id: string, type: 'product' | 'service') => {
+    setCart(cart.filter(item => !(item.id === id && item.type === type)));
   };
 
-  const calculateTotals = () => {
-    const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
-    const total = subtotal - discount + tax;
-    return { subtotal, total };
+  const calculateSubtotal = () => {
+    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
-  const completeSale = async () => {
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    return subtotal - discount;
+  };
+
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast({
         title: 'Error',
@@ -136,215 +137,176 @@ export default function POSPage() {
       return;
     }
 
-    setLoading(true);
+    if (!selectedClient) {
+      toast({
+        title: 'Error',
+        description: 'Seleccione un cliente',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      const items = cart.map(item => ({
-        itemType: item.itemType,
-        serviceId: item.serviceId,
-        productId: item.productId,
-        professionalId: item.professionalId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        commissionRate: item.commissionRate,
-      }));
+      const saleData = {
+        clientId: selectedClient,
+        professionalId: selectedProfessional || undefined,
+        paymentMethod,
+        discount,
+        items: cart.map(item => ({
+          productId: item.type === 'product' ? item.id : undefined,
+          serviceId: item.type === 'service' ? item.id : undefined,
+          quantity: item.quantity,
+          unitPrice: item.price,
+        })),
+      };
 
       const response = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: selectedClient || undefined,
-          items,
-          discount,
-          tax,
-          paymentMethod,
-          notes,
-        }),
+        body: JSON.stringify(saleData),
       });
 
-      if (!response.ok) throw new Error('Error al crear venta');
+      const result = await response.json();
 
-      const sale = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Error al procesar la venta');
+      }
 
       toast({
         title: 'Éxito',
-        description: `Sale ${sale.saleNumber} completed successfully`,
+        description: `Venta ${result.data.saleNumber} completada exitosamente`,
       });
 
       // Reset form
       setCart([]);
       setSelectedClient('');
+      setSelectedProfessional('');
       setDiscount(0);
-      setTax(0);
-      setNotes('');
+      setPaymentMethod('CASH');
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Error al procesar la venta',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
     }
   };
-
-  const { subtotal, total } = calculateTotals();
 
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Punto de Venta</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Products & Services */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Products and Services */}
+        <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Productos</CardTitle>
+              <CardTitle>Productos y Servicios</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {products.map(product => (
-                  <Button
-                    key={product.id}
-                    variant="outline"
-                    className="h-auto flex flex-col items-start p-4"
-                    onClick={() => addProductToCart(product)}
-                    disabled={product.stock <= 0}
-                  >
-                    <span className="font-semibold">{product.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      ${product.salePrice.toFixed(2)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Stock: {product.stock}
-                    </span>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Servicios</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.map(service => (
-                  <div key={service.id} className="flex items-center gap-4 p-4 border rounded">
-                    <div className="flex-1">
-                      <p className="font-semibold">{service.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        ${service.price.toFixed(2)} - {service.duration} min
-                      </p>
-                    </div>
-                    <Select onValueChange={(professionalId) => {
-                      const commissionRate = 15; // Default, should come from service config
-                      addServiceToCart(service, professionalId, commissionRate);
-                    }}>
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Seleccionar profesional" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {professionals.map(prof => (
-                          <SelectItem key={prof.id} value={prof.id}>
-                            {prof.firstName} {prof.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <Tabs defaultValue="products">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="products">Productos</TabsTrigger>
+                  <TabsTrigger value="services">Servicios</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="products" className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {products.map(product => (
+                      <Button
+                        key={product.id}
+                        variant="outline"
+                        className="h-auto flex-col items-start p-4"
+                        onClick={() => addProductToCart(product)}
+                      >
+                        <span className="font-semibold">{product.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          ${product.salePrice.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Stock: {product.stock}
+                        </span>
+                      </Button>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </TabsContent>
+
+                <TabsContent value="services" className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {services.map(service => (
+                      <Button
+                        key={service.id}
+                        variant="outline"
+                        className="h-auto flex-col items-start p-4"
+                        onClick={() => addServiceToCart(service)}
+                      >
+                        <span className="font-semibold">{service.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          ${service.price.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {service.duration} min
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
 
-        {/* Cart & Checkout */}
-        <div className="space-y-6">
+        {/* Cart and Checkout */}
+        <div>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />
-                Cart ({cart.length})
+                Carrito ({cart.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {cart.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">El carrito está vacío</p>
-              ) : (
-                <>
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {cart.map(item => (
-                      <div key={item.id} className="flex items-center gap-2 p-2 border rounded">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            ${item.unitPrice.toFixed(2)} x {item.quantity}
-                          </p>
-                        </div>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateCartItemQuantity(item.id, parseInt(e.target.value))}
-                          className="w-16"
-                        />
-                        <span className="font-semibold w-20 text-right">
-                          ${item.subtotal.toFixed(2)}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeFromCart(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2 pt-4 border-t">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span className="font-semibold">${subtotal.toFixed(2)}</span>
+              {/* Cart Items */}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {cart.map(item => (
+                  <div key={`${item.type}-${item.id}`} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        ${item.price.toFixed(2)} x {item.quantity}
+                      </p>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span>Descuento:</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={discount}
-                        onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                        className="w-24 text-right"
-                      />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Impuesto:</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={tax}
-                        onChange={(e) => setTax(parseFloat(e.target.value) || 0)}
-                        className="w-24 text-right"
-                      />
-                    </div>
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                      <span>Total:</span>
-                      <span>${total.toFixed(2)}</span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateQuantity(item.id, item.type, -1)}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateQuantity(item.id, item.type, 1)}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => removeFromCart(item.id, item.type)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                ))}
+              </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Finalizar Compra</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Cliente (Opcional)</Label>
+              {/* Client Selection */}
+              <div className="space-y-2">
+                <Label>Cliente</Label>
                 <Select value={selectedClient} onValueChange={setSelectedClient}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar cliente" />
@@ -359,45 +321,74 @@ export default function POSPage() {
                 </Select>
               </div>
 
-              <div>
-                <Label>Método de Pago</Label>
-                <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+              {/* Professional Selection */}
+              <div className="space-y-2">
+                <Label>Profesional (Opcional)</Label>
+                <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleccionar profesional" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                    <SelectItem value="TARJETA">Tarjeta</SelectItem>
-                    <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                    <SelectItem value="OTRO">Otro</SelectItem>
+                    {professionals.map(prof => (
+                      <SelectItem key={prof.id} value={prof.id}>
+                        {prof.firstName} {prof.lastName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <Label>Notas</Label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Notas adicionales..."
-                  rows={3}
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <Label>Método de Pago</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CASH">Efectivo</SelectItem>
+                    <SelectItem value="CARD">Tarjeta</SelectItem>
+                    <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Discount */}
+              <div className="space-y-2">
+                <Label>Descuento</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discount}
+                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
                 />
               </div>
 
+              {/* Totals */}
+              <div className="space-y-2 pt-4 border-t">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>${calculateSubtotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Descuento:</span>
+                  <span>-${discount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total:</span>
+                  <span>${calculateTotal().toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Checkout Button */}
               <Button
                 className="w-full"
                 size="lg"
-                onClick={completeSale}
-                disabled={loading || cart.length === 0}
+                onClick={handleCheckout}
+                disabled={cart.length === 0 || !selectedClient}
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Completar Venta'
-                )}
+                Procesar Venta
               </Button>
             </CardContent>
           </Card>
