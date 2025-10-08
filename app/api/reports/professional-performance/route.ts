@@ -1,0 +1,37 @@
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { reportService } from '@/services/reportService';
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tenantId = (session.user as any).tenantId;
+    const searchParams = request.nextUrl.searchParams;
+
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    if (!startDate || !endDate) {
+      return NextResponse.json(
+        { error: 'startDate and endDate are required' },
+        { status: 400 }
+      );
+    }
+
+    const performance = await reportService.getProfessionalPerformance(
+      tenantId,
+      new Date(startDate),
+      new Date(endDate)
+    );
+
+    return NextResponse.json(performance);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
