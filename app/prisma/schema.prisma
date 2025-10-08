@@ -1,3 +1,4 @@
+
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
@@ -75,6 +76,33 @@ enum PaymentStatus {
   PAID
   PARTIAL
   PENDING
+}
+
+// Phase 2: Client Module Enums
+enum NoteType {
+  GENERAL
+  MEDICAL
+  PREFERENCE
+  COMPLAINT
+}
+
+enum CommunicationPreference {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum ReminderTime {
+  HOURS_24
+  HOURS_1
+  BOTH
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
 }
 
 // Tenant (Empresa)
@@ -174,6 +202,10 @@ model User {
   workingHours WorkingHours[]
   serviceUsers ServiceUser[]
   notificationLogs NotificationLog[] // Phase 1
+  
+  // Phase 2: Optional Client Profile (1-to-1)
+  clientProfile ClientProfile?
+  clientNotes   ClientNote[]
   
   @@map("users")
 }
@@ -449,4 +481,104 @@ model MasterAdminConfig {
   lastPasswordChange  DateTime @default(now()) @map("last_password_change")
   
   @@map("master_admin_config")
+}
+
+// ============================================
+// PHASE 2: CLIENT MODULE (CRM)
+// ============================================
+
+// Extended Client Profile (1-to-1 with User, OPTIONAL)
+model ClientProfile {
+  id                    String    @id @default(cuid())
+  
+  // 1-to-1 relation with User (OPTIONAL - nullable)
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Extended personal information (all nullable for non-breaking)
+  firstName             String?
+  lastName              String?
+  dateOfBirth           DateTime?
+  gender                Gender?
+  
+  // Contact information
+  address               String?
+  city                  String?
+  state                 String?
+  postalCode            String?
+  country               String?   @default("México")
+  phone                 String?
+  alternatePhone        String?
+  email                 String?
+  alternateEmail        String?
+  
+  // Professional information
+  occupation            String?
+  company               String?
+  
+  // Profile photo
+  profilePhotoUrl       String?
+  
+  // Emergency contact
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  
+  // General notes
+  notes                 String?   @db.Text
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  // Relations
+  clientNotes           ClientNote[]
+  clientPreferences     ClientPreferences?
+  
+  @@map("client_profiles")
+}
+
+// Client Notes
+model ClientNote {
+  id                String      @id @default(cuid())
+  
+  // Relations
+  clientProfileId   String
+  clientProfile     ClientProfile @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  
+  createdByUserId   String
+  createdBy         User        @relation(fields: [createdByUserId], references: [id])
+  
+  // Note details
+  noteType          NoteType    @default(GENERAL)
+  content           String      @db.Text
+  isPrivate         Boolean     @default(false)
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@map("client_notes")
+}
+
+// Client Preferences
+model ClientPreferences {
+  id                      String                  @id @default(cuid())
+  
+  // 1-to-1 relation with ClientProfile
+  clientProfileId         String                  @unique
+  clientProfile           ClientProfile           @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  
+  // Preferences (stored as JSON arrays)
+  preferredServices       String?                 @db.Text // JSON array of service IDs
+  preferredStaff          String?                 @db.Text // JSON array of user IDs
+  
+  // Communication preferences
+  communicationPreference CommunicationPreference @default(EMAIL)
+  reminderTime            ReminderTime            @default(HOURS_24)
+  
+  // Special requests
+  specialRequests         String?                 @db.Text
+  
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  
+  @@map("client_preferences")
 }
