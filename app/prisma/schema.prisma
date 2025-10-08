@@ -105,6 +105,41 @@ enum Gender {
   PREFER_NOT_TO_SAY
 }
 
+// Phase 3: Sales Module Enums
+enum ProductType {
+  SALE
+  INTERNAL
+}
+
+enum ProductUnit {
+  PIECE
+  SERVICE
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum SalePaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+enum CommissionStatus {
+  PENDING
+  PAID
+}
+
 // Tenant (Empresa)
 model Tenant {
   id          String   @id @default(cuid())
@@ -142,6 +177,14 @@ model Tenant {
   serviceCategories ServiceCategory[] // Phase 1
   notificationTemplates NotificationTemplate[] // Phase 1
   notificationLogs NotificationLog[] // Phase 1
+  
+  // Phase 3: Sales Module
+  products    Product[]
+  suppliers   Supplier[]
+  productCategories ProductCategory[]
+  sales       Sale[]
+  inventoryMovements InventoryMovement[]
+  professionalCommissions ProfessionalCommission[]
   
   @@map("tenants")
 }
@@ -207,6 +250,12 @@ model User {
   clientProfile ClientProfile?
   clientNotes   ClientNote[]
   
+  // Phase 3: Sales Module
+  sales       Sale[]
+  inventoryMovements InventoryMovement[]
+  professionalCommissions ProfessionalCommission[]
+  saleItemsAsProfessional SaleItem[] @relation("ProfessionalSaleItems")
+  
   @@map("users")
 }
 
@@ -253,6 +302,9 @@ model Service {
   appointments Appointment[]
   serviceUsers ServiceUser[]
   
+  // Phase 3: Sales Module
+  saleItems   SaleItem[]
+  
   @@map("services")
 }
 
@@ -296,6 +348,9 @@ model Client {
   appointments Appointment[]
   payments    Payment[]
   clientUser  ClientUser?
+  
+  // Phase 3: Sales Module
+  sales       Sale[]
   
   @@unique([phone, tenantId])
   @@map("clients")
@@ -581,4 +636,201 @@ model ClientPreferences {
   updatedAt               DateTime                @updatedAt
   
   @@map("client_preferences")
+}
+
+// ============================================
+// PHASE 3: SALES CAPTURE MODULE
+// ============================================
+
+// Product Categories
+model ProductCategory {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean   @default(true)
+  
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  products    Product[]
+  
+  @@map("product_categories")
+}
+
+// Suppliers
+model Supplier {
+  id            String    @id @default(cuid())
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  notes         String?   @db.Text
+  isActive      Boolean   @default(true)
+  
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  products      Product[]
+  
+  @@map("suppliers")
+}
+
+// Products (for sale and internal use)
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  sku         String?
+  type        ProductType @default(SALE)
+  unit        ProductUnit @default(PIECE)
+  stock       Float       @default(0)
+  minStock    Float       @default(0)
+  costPrice   Float       @default(0)
+  salePrice   Float       @default(0)
+  isActive    Boolean     @default(true)
+  
+  tenantId    String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  supplierId  String?
+  supplier    Supplier?   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  
+  categoryId  String?
+  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  saleItems   SaleItem[]
+  inventoryMovements InventoryMovement[]
+  
+  @@index([tenantId, type])
+  @@index([tenantId, stock])
+  @@map("products")
+}
+
+// Sales
+model Sale {
+  id            String            @id @default(cuid())
+  saleNumber    String            @unique
+  subtotal      Float
+  discount      Float             @default(0)
+  tax           Float             @default(0)
+  total         Float
+  paymentMethod SalePaymentMethod @default(CASH)
+  status        SaleStatus        @default(COMPLETED)
+  saleDate      DateTime          @default(now())
+  notes         String?           @db.Text
+  
+  tenantId      String
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  clientId      String?
+  client        Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  
+  userId        String            // Seller/cashier
+  user          User              @relation(fields: [userId], references: [id])
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  
+  // Relations
+  saleItems     SaleItem[]
+  
+  @@index([tenantId, saleDate])
+  @@index([tenantId, status])
+  @@index([clientId])
+  @@map("sales")
+}
+
+// Sale Items (can be services or products)
+model SaleItem {
+  id              String  @id @default(cuid())
+  itemType        String  // "SERVICE" or "PRODUCT"
+  quantity        Float
+  unitPrice       Float
+  subtotal        Float
+  commissionRate  Float?  // For services only
+  commissionAmount Float? // For services only
+  
+  saleId          String
+  sale            Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  
+  serviceId       String?
+  service         Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  
+  productId       String?
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  
+  professionalId  String? // For services only
+  professional    User?   @relation("ProfessionalSaleItems", fields: [professionalId], references: [id], onDelete: SetNull)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([saleId])
+  @@index([serviceId])
+  @@index([productId])
+  @@index([professionalId])
+  @@map("sale_items")
+}
+
+// Inventory Movements
+model InventoryMovement {
+  id            String        @id @default(cuid())
+  movementType  MovementType
+  quantity      Float
+  reason        String?
+  reference     String?       // Sale number, purchase order, etc.
+  
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  productId     String
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([tenantId, productId])
+  @@index([tenantId, createdAt])
+  @@map("inventory_movements")
+}
+
+// Professional Commissions
+model ProfessionalCommission {
+  id              String           @id @default(cuid())
+  period          String           // Format: "YYYY-MM" for monthly tracking
+  totalSales      Float            @default(0)
+  totalCommissions Float           @default(0)
+  status          CommissionStatus @default(PENDING)
+  paidDate        DateTime?
+  notes           String?          @db.Text
+  
+  tenantId        String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  professionalId  String
+  professional    User             @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@unique([tenantId, professionalId, period])
+  @@index([tenantId, period])
+  @@index([professionalId, status])
+  @@map("professional_commissions")
 }
