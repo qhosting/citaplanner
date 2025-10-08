@@ -6,7 +6,37 @@
 import { Gender, CommunicationPreference, NoteType, AppointmentStatus, PaymentStatus } from '@prisma/client';
 
 // ============================================================================
-// Client Profile Types
+// Client Types (Simple Model - Primary)
+// ============================================================================
+
+export interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string;
+  address: string | null;
+  birthday: string | null;
+  notes: string | null;
+  isActive: boolean;
+  tenantId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientFormData {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  birthday?: Date | string;
+  notes?: string;
+  tenantId: string;
+}
+
+// ============================================================================
+// Client Profile Types (Legacy - For Backward Compatibility)
 // ============================================================================
 
 export interface ClientProfile {
@@ -190,6 +220,18 @@ export interface PaginatedResponse<T> {
 // Component Props Types
 // ============================================================================
 
+export interface ClientFormProps {
+  initialData?: Partial<ClientFormData>;
+  onSubmit: (data: ClientFormData) => Promise<void>;
+  onCancel: () => void;
+  isLoading?: boolean;
+}
+
+export interface ClientViewProps {
+  clientData: Client;
+}
+
+// Legacy props for backward compatibility
 export interface ClientProfileFormProps {
   initialData?: Partial<ClientProfileFormData>;
   onSubmit: (data: ClientProfileFormData) => Promise<void>;

@@ -6,39 +6,35 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import ClientProfileForm from '@/components/clients/ClientProfileForm';
-import type { ClientProfileFormData } from '@/lib/clients/types';
+import ClientForm from '@/components/clients/ClientForm';
+import type { ClientFormData } from '@/lib/clients/types';
 
 export default function NewClientPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: ClientProfileFormData) => {
+  const handleSubmit = async (data: ClientFormData) => {
     try {
       setIsLoading(true);
 
-      // Ensure we have a userId
-      if (!data.userId && session?.user?.id) {
-        data.userId = session.user.id;
+      // Ensure we have a tenantId
+      if (!data.tenantId && session?.user?.tenantId) {
+        data.tenantId = session.user.tenantId;
       }
 
-      if (!data.userId) {
-        toast.error('Error: No se pudo identificar el usuario');
+      if (!data.tenantId) {
+        toast.error('Error: No se pudo identificar el tenant');
         return;
       }
 
-      const response = await fetch('/api/clients/profiles', {
+      const response = await fetch('/api/clients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        throw new Error('Error al crear el cliente');
-      }
 
       const result = await response.json();
 
@@ -80,9 +76,12 @@ export default function NewClientPage() {
       </div>
 
       {/* Form */}
-      <ClientProfileForm
+      <ClientForm
         initialData={{
-          userId: session?.user?.id || '',
+          firstName: '',
+          lastName: '',
+          phone: '',
+          tenantId: session?.user?.tenantId || '',
         }}
         onSubmit={handleSubmit}
         onCancel={handleCancel}

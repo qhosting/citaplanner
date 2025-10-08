@@ -5,16 +5,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import ClientProfileForm from '@/components/clients/ClientProfileForm';
-import PhotoUpload from '@/components/clients/PhotoUpload';
-import type { ClientProfile, ClientProfileFormData } from '@/lib/clients/types';
+import ClientForm from '@/components/clients/ClientForm';
+import type { Client, ClientFormData } from '@/lib/clients/types';
 
 export default function EditClientPage() {
   const params = useParams();
   const router = useRouter();
   const clientId = params.id as string;
 
-  const [client, setClient] = useState<ClientProfile | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,7 +26,7 @@ export default function EditClientPage() {
   const fetchClient = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/clients/profiles/${clientId}`);
+      const response = await fetch(`/api/clients/${clientId}`);
 
       if (!response.ok) {
         throw new Error('Error al cargar el cliente');
@@ -49,11 +48,11 @@ export default function EditClientPage() {
     }
   };
 
-  const handleSubmit = async (data: ClientProfileFormData) => {
+  const handleSubmit = async (data: ClientFormData) => {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`/api/clients/profiles/${clientId}`, {
+      const response = await fetch(`/api/clients/${clientId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -78,36 +77,6 @@ export default function EditClientPage() {
       toast.error(err instanceof Error ? err.message : 'Error al actualizar el cliente');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handlePhotoUpload = async (photoUrl: string) => {
-    try {
-      const response = await fetch(`/api/clients/profiles/${clientId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          profilePhotoUrl: photoUrl,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al actualizar la foto');
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Error al actualizar la foto');
-      }
-
-      // Refresh client data
-      fetchClient();
-    } catch (err) {
-      console.error('Error uploading photo:', err);
-      throw err;
     }
   };
 
@@ -158,37 +127,17 @@ export default function EditClientPage() {
         </div>
       </div>
 
-      {/* Photo Upload Section */}
-      <div className="max-w-md">
-        <h3 className="text-lg font-medium mb-4">Foto de Perfil</h3>
-        <PhotoUpload
-          currentPhotoUrl={client.profilePhotoUrl}
-          onUpload={handlePhotoUpload}
-        />
-      </div>
-
       {/* Form */}
-      <ClientProfileForm
+      <ClientForm
         initialData={{
-          userId: client.userId,
-          firstName: client.firstName || '',
-          lastName: client.lastName || '',
-          dateOfBirth: client.dateOfBirth || undefined,
-          gender: client.gender || undefined,
-          address: client.address || '',
-          city: client.city || '',
-          state: client.state || '',
-          postalCode: client.postalCode || '',
-          country: client.country || 'México',
-          phone: client.phone || '',
-          alternatePhone: client.alternatePhone || '',
+          firstName: client.firstName,
+          lastName: client.lastName,
+          phone: client.phone,
           email: client.email || '',
-          alternateEmail: client.alternateEmail || '',
-          occupation: client.occupation || '',
-          company: client.company || '',
-          emergencyContactName: client.emergencyContactName || '',
-          emergencyContactPhone: client.emergencyContactPhone || '',
+          address: client.address || '',
+          birthday: client.birthday || undefined,
           notes: client.notes || '',
+          tenantId: client.tenantId,
         }}
         onSubmit={handleSubmit}
         onCancel={handleCancel}

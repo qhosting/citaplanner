@@ -7,11 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSession } from 'next-auth/react';
-import ClientProfileView from '@/components/clients/ClientProfileView';
+import ClientView from '@/components/clients/ClientView';
 import ClientHistory from '@/components/clients/ClientHistory';
 import ClientNotesList from '@/components/clients/ClientNotesList';
 import ClientPreferences from '@/components/clients/ClientPreferences';
-import type { ClientProfile } from '@/lib/clients/types';
+import type { Client } from '@/lib/clients/types';
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -19,7 +19,7 @@ export default function ClientDetailPage() {
   const { data: session } = useSession();
   const clientId = params.id as string;
 
-  const [client, setClient] = useState<ClientProfile | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function ClientDetailPage() {
   const fetchClient = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/clients/profiles/${clientId}`);
+      const response = await fetch(`/api/clients/${clientId}`);
 
       if (!response.ok) {
         throw new Error('Error al cargar el cliente');
@@ -111,7 +111,7 @@ export default function ClientDetailPage() {
         </TabsList>
 
         <TabsContent value="profile">
-          <ClientProfileView clientData={client} />
+          <ClientView clientData={client} />
         </TabsContent>
 
         <TabsContent value="history">
