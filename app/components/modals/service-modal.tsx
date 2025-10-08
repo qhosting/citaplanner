@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,89 +24,98 @@ interface ServiceModalProps {
   onClose: () => void
   service?: any
   mode: 'create' | 'edit'
+  onSuccess?: () => void
 }
 
-const serviceCategories = [
-  'Cabello',
-  'Uñas',
-  'Facial',
-  'Corporal',
-  'Masajes',
-  'Depilación',
-  'Maquillaje',
-  'Otros'
-]
-
-const mockProfessionals = [
-  { id: '1', name: 'Ana López' },
-  { id: '2', name: 'Juan Pérez' },
-  { id: '3', name: 'Laura García' },
-  { id: '4', name: 'Carlos Medina' }
-]
-
-export function ServiceModal({ isOpen, onClose, service, mode }: ServiceModalProps) {
+export function ServiceModal({ isOpen, onClose, service, mode, onSuccess }: ServiceModalProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedProfessionals, setSelectedProfessionals] = useState<string[]>(
-    service?.professionals || []
-  )
+  const [categories, setCategories] = useState<any[]>([])
   
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: service ? {
       name: service.name || '',
       description: service.description || '',
-      category: service.category || 'Otros',
-      duration: service.duration || 30,
+      duration: service.duration || 60,
       price: service.price || 0,
-      commission: service.commission || 10,
+      categoryId: service.categoryId || '',
       color: service.color || '#3B82F6',
-      isActive: service.isActive !== false
+      isActive: service.isActive !== undefined ? service.isActive : true,
     } : {
       name: '',
       description: '',
-      category: 'Otros',
-      duration: 30,
+      duration: 60,
       price: 0,
-      commission: 10,
+      categoryId: '',
       color: '#3B82F6',
-      isActive: true
+      isActive: true,
     }
   })
 
-  const duration = watch('duration')
-  const price = watch('price')
+  useEffect(() => {
+    if (isOpen) {
+      loadCategories()
+    }
+  }, [isOpen])
+
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/services/categories')
+      const result = await response.json()
+
+      if (result.success) {
+        setCategories(result.data)
+      }
+    } catch (error) {
+      console.error('Error al cargar categorías:', error)
+    }
+  }
 
   const onSubmit = async (data: any) => {
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
       const serviceData = {
-        ...data,
-        professionals: selectedProfessionals
+        name: data.name,
+        description: data.description || null,
+        duration: parseInt(data.duration),
+        price: parseFloat(data.price),
+        categoryId: data.categoryId || null,
+        color: data.color,
+        isActive: data.isActive,
       }
 
-      console.log('Service data:', serviceData)
+      const url = mode === 'create' 
+        ? '/api/services'
+        : `/api/services/${service.id}`
+      
+      const method = mode === 'create' ? 'POST' : 'PUT'
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(serviceData),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al guardar el servicio')
+      }
       
       toast.success(mode === 'create' ? 'Servicio creado exitosamente' : 'Servicio actualizado exitosamente')
+      onSuccess?.()
       onClose()
-    } catch (error) {
-      toast.error('Error al guardar el servicio')
+    } catch (error: any) {
+      toast.error(error.message || 'Error al guardar el servicio')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const toggleProfessional = (professionalId: string) => {
-    setSelectedProfessionals(prev => 
-      prev.includes(professionalId)
-        ? prev.filter(id => id !== professionalId)
-        : [...prev, professionalId]
-    )
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Scissors className="h-5 w-5 mr-2" />
@@ -114,8 +123,8 @@ export function ServiceModal({ isOpen, onClose, service, mode }: ServiceModalPro
           </DialogTitle>
           <DialogDescription>
             {mode === 'create' 
-              ? 'Configure un nuevo servicio para su negocio'
-              : 'Modifique la configuración del servicio'
+              ? 'Complete la información para crear un nuevo servicio'
+              : 'Modifique los detalles del servicio'
             }
           </DialogDescription>
         </DialogHeader>
@@ -123,28 +132,74 @@ export function ServiceModal({ isOpen, onClose, service, mode }: ServiceModalPro
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="name">Nombre del Servicio</Label>
+              <Label htmlFor="name">Nombre del Servicio *</Label>
               <Input
                 id="name"
-                {...register('name', { 
-                  required: 'Nombre es requerido',
-                  minLength: { value: 2, message: 'Mínimo 2 caracteres' }
-                })}
-                placeholder="Ej: Corte de Cabello Dama"
+                placeholder="Ej: Corte de Cabello"
+                {...register('name', { required: 'Nombre es requerido' })}
               />
               {errors.name && <p className="text-sm text-red-500">{errors.name.message as string}</p>}
             </div>
 
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                placeholder="Descripción del servicio..."
+                rows={3}
+                {...register('description')}
+              />
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="category">Categoría</Label>
-              <Select value={watch('category')} onValueChange={(value) => setValue('category', value)}>
+              <Label htmlFor="duration" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Duración (minutos) *
+              </Label>
+              <Input
+                id="duration"
+                type="number"
+                min="5"
+                step="5"
+                placeholder="60"
+                {...register('duration', { 
+                  required: 'Duración es requerida',
+                  min: { value: 5, message: 'Mínimo 5 minutos' }
+                })}
+              />
+              {errors.duration && <p className="text-sm text-red-500">{errors.duration.message as string}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Precio *
+              </Label>
+              <Input
+                id="price"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                {...register('price', { 
+                  required: 'Precio es requerido',
+                  min: { value: 0, message: 'El precio debe ser mayor o igual a 0' }
+                })}
+              />
+              {errors.price && <p className="text-sm text-red-500">{errors.price.message as string}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categoryId">Categoría</Label>
+              <Select value={watch('categoryId')} onValueChange={(value) => setValue('categoryId', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {serviceCategories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+                  <SelectItem value="">Sin categoría</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -152,15 +207,16 @@ export function ServiceModal({ isOpen, onClose, service, mode }: ServiceModalPro
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="color">Color Identificador</Label>
-              <div className="flex items-center space-x-2">
+              <Label htmlFor="color">Color</Label>
+              <div className="flex gap-2">
                 <Input
                   id="color"
                   type="color"
                   {...register('color')}
-                  className="w-16 h-10 p-1 border-0"
+                  className="w-20 h-10"
                 />
                 <Input
+                  type="text"
                   value={watch('color')}
                   onChange={(e) => setValue('color', e.target.value)}
                   placeholder="#3B82F6"
@@ -169,123 +225,43 @@ export function ServiceModal({ isOpen, onClose, service, mode }: ServiceModalPro
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="duration">
-                <Clock className="h-4 w-4 inline mr-1" />
-                Duración (minutos)
-              </Label>
-              <Input
-                id="duration"
-                type="number"
-                min="5"
-                max="480"
-                step="5"
-                {...register('duration', { 
-                  required: 'Duración es requerida',
-                  min: { value: 5, message: 'Mínimo 5 minutos' },
-                  max: { value: 480, message: 'Máximo 8 horas' }
-                })}
-              />
-              {errors.duration && <p className="text-sm text-red-500">{errors.duration.message as string}</p>}
-              {duration && (
-                <p className="text-xs text-muted-foreground">
-                  Duración: {Math.floor(duration / 60)}h {duration % 60}min
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="price">
-                <DollarSign className="h-4 w-4 inline mr-1" />
-                Precio
-              </Label>
-              <Input
-                id="price"
-                type="number"
-                min="0"
-                step="0.01"
-                {...register('price', { 
-                  required: 'Precio es requerido',
-                  min: { value: 0, message: 'Precio no puede ser negativo' }
-                })}
-              />
-              {errors.price && <p className="text-sm text-red-500">{errors.price.message as string}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="commission">Comisión (%)</Label>
-              <Input
-                id="commission"
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                {...register('commission', { 
-                  min: { value: 0, message: 'Comisión no puede ser negativa' },
-                  max: { value: 100, message: 'Comisión no puede ser mayor a 100%' }
-                })}
-              />
-              {errors.commission && <p className="text-sm text-red-500">{errors.commission.message as string}</p>}
-              {price && watch('commission') && (
-                <p className="text-xs text-muted-foreground">
-                  Comisión: ${(price * watch('commission') / 100).toFixed(2)}
-                </p>
-              )}
-            </div>
-
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="description">Descripción</Label>
-              <Textarea
-                id="description"
-                {...register('description')}
-                placeholder="Descripción detallada del servicio..."
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Label>Profesionales que pueden realizar este servicio</Label>
-            <div className="grid gap-2 md:grid-cols-2">
-              {mockProfessionals.map((prof) => (
-                <div key={prof.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={`prof-${prof.id}`}
-                    checked={selectedProfessionals.includes(prof.id)}
-                    onChange={() => toggleProfessional(prof.id)}
-                    className="rounded"
+              <div className="flex items-center justify-between">
+                <Label htmlFor="isActive">Estado del Servicio</Label>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="isActive"
+                    checked={watch('isActive')}
+                    onCheckedChange={(checked) => setValue('isActive', checked)}
                   />
-                  <Label htmlFor={`prof-${prof.id}`} className="cursor-pointer">
-                    {prof.name}
-                  </Label>
+                  <span className="text-sm text-gray-600">
+                    {watch('isActive') ? 'Activo' : 'Inactivo'}
+                  </span>
                 </div>
-              ))}
+              </div>
             </div>
-            {selectedProfessionals.length === 0 && (
-              <p className="text-sm text-yellow-600">
-                Seleccione al menos un profesional
-              </p>
-            )}
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
-              <p className="font-medium">Servicio Activo</p>
-              <p className="text-sm text-muted-foreground">
-                Los servicios inactivos no aparecen en reservas
-              </p>
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="font-medium text-blue-900 mb-2">Vista Previa</h4>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: watch('color') }}
+              />
+              <div>
+                <p className="font-medium">{watch('name') || 'Nombre del servicio'}</p>
+                <p className="text-sm text-gray-600">
+                  {watch('duration')} min - ${parseFloat(watch('price') || '0').toFixed(2)}
+                </p>
+              </div>
             </div>
-            <Switch
-              checked={watch('isActive')}
-              onCheckedChange={(checked) => setValue('isActive', checked)}
-            />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button
               type="submit"
-              disabled={isLoading || selectedProfessionals.length === 0}
+              disabled={isLoading}
               className="flex-1"
             >
               <Save className="h-4 w-4 mr-2" />
