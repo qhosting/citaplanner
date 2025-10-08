@@ -8,13 +8,13 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const tenantId = (session.user as any).tenantId;
 
   if (!tenantId) {
-    return NextResponse.json({ error: 'Tenant ID not found' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Tenant ID not found' }, { status: 400 });
   }
 
   try {
@@ -46,9 +46,9 @@ export async function GET(req: NextRequest) {
       take: limit,
     });
 
-    return NextResponse.json(logs);
+    return NextResponse.json({ success: true, data: logs });
   } catch (error: any) {
     console.error('Notification logs error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

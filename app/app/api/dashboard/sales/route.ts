@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = (session.user as any).tenantId;
@@ -59,20 +59,23 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
-      period,
-      salesSummary: salesReport.summary,
-      salesTrend: salesReport.groupedData,
-      topProducts,
-      topServices,
-      lowStockAlerts: lowStockProducts.length,
-      lowStockProducts: lowStockProducts.slice(0, 5),
-      pendingCommissions: {
-        count: pendingCommissions.length,
-        total: totalPendingCommissions,
-        items: pendingCommissions.slice(0, 5),
+      success: true,
+      data: {
+        period,
+        salesSummary: salesReport.summary,
+        salesTrend: salesReport.groupedData,
+        topProducts,
+        topServices,
+        lowStockAlerts: lowStockProducts.length,
+        lowStockProducts: lowStockProducts.slice(0, 5),
+        pendingCommissions: {
+          count: pendingCommissions.length,
+          total: totalPendingCommissions,
+          items: pendingCommissions.slice(0, 5),
+        },
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

@@ -2,59 +2,95 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { serviceManager } from '@/lib/services/serviceManager';
+import { prisma } from '@/lib/prisma';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const tenantId = (session.user as any).tenantId;
+
+  if (!tenantId) {
+    return NextResponse.json({ success: false, error: 'Tenant ID not found' }, { status: 400 });
   }
 
   try {
-    const { id } = await params;
-    const category = await serviceManager.getCategory(id);
+    const category = await prisma.serviceCategory.findFirst({
+      where: {
+        id: params.id,
+        tenantId,
+      },
+    });
+
     if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Category not found' }, { status: 404 });
     }
-    return NextResponse.json(category);
+
+    return NextResponse.json({ success: true, data: category });
   } catch (error: any) {
-    console.error('Category API error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error('Service category API error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const tenantId = (session.user as any).tenantId;
+
+  if (!tenantId) {
+    return NextResponse.json({ success: false, error: 'Tenant ID not found' }, { status: 400 });
   }
 
   try {
-    const { id } = await params;
     const body = await req.json();
-    const updatedCategory = await serviceManager.updateCategory(id, body);
-    return NextResponse.json(updatedCategory);
+    const updatedCategory = await prisma.serviceCategory.update({
+      where: { id: params.id },
+      data: body,
+    });
+    return NextResponse.json({ success: true, data: updatedCategory });
   } catch (error: any) {
-    console.error('Category API error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error('Service category API error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const tenantId = (session.user as any).tenantId;
+
+  if (!tenantId) {
+    return NextResponse.json({ success: false, error: 'Tenant ID not found' }, { status: 400 });
   }
 
   try {
-    const { id } = await params;
-    await serviceManager.deleteCategory(id);
-    return new NextResponse(null, { status: 204 });
+    await prisma.serviceCategory.delete({
+      where: { id: params.id },
+    });
+    return NextResponse.json({ success: true, message: 'Category deleted successfully' });
   } catch (error: any) {
-    console.error('Category API error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error('Service category API error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

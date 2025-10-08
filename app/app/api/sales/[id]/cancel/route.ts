@@ -6,21 +6,20 @@ import { saleService } from '@/lib/services/saleService';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = (session.user as any).tenantId;
-    const userId = (session.user as any).id;
+    const { reason } = await request.json();
 
-    const sale = await saleService.cancelSale(id, tenantId, userId);
-    return NextResponse.json(sale);
+    const sale = await saleService.cancelSale(params.id, tenantId, reason);
+    return NextResponse.json({ success: true, data: sale });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

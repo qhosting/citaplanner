@@ -8,14 +8,14 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = (session.user as any).tenantId;
     const report = await inventoryService.getStockReport(tenantId);
 
-    return NextResponse.json(report);
+    return NextResponse.json({ success: true, data: report });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
