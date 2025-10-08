@@ -232,7 +232,7 @@ export default function ClientsPage() {
                     <div className="flex items-start gap-4 flex-1">
                       <Avatar className="h-12 w-12">
                         {client.profilePhotoUrl ? (
-                          <AvatarImage src={client.profilePhotoUrl} alt="Profile" />
+                          <AvatarImage src={client.profilePhotoUrl} alt="Perfil" />
                         ) : (
                           <AvatarFallback className="bg-blue-100 text-blue-800">
                             {getInitials(client)}

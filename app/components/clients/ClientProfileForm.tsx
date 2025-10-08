@@ -34,7 +34,7 @@ const clientProfileSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   dateOfBirth: z.string().optional(),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+  gender: z.enum(['MASCULINO', 'FEMENINO', 'OTRO', 'PREFIERO_NO_DECIR']).optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -164,10 +164,10 @@ export default function ClientProfileForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="MALE">Masculino</SelectItem>
-                        <SelectItem value="FEMALE">Femenino</SelectItem>
-                        <SelectItem value="OTHER">Otro</SelectItem>
-                        <SelectItem value="PREFER_NOT_TO_SAY">Prefiero no decir</SelectItem>
+                        <SelectItem value="MASCULINO">Masculino</SelectItem>
+                        <SelectItem value="FEMENINO">Femenino</SelectItem>
+                        <SelectItem value="OTRO">Otro</SelectItem>
+                        <SelectItem value="PREFIERO_NO_DECIR">Prefiero no decir</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

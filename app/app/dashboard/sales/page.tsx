@@ -34,7 +34,7 @@ export default function SalesDashboardPage() {
   };
 
   if (loading) {
-    return <div className="container mx-auto p-6">Loading...</div>;
+    return <div className="container mx-auto p-6">Cargando...</div>;
   }
 
   return (
@@ -46,9 +46,9 @@ export default function SalesDashboardPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="day">Today</SelectItem>
-            <SelectItem value="week">This Week</SelectItem>
-            <SelectItem value="month">This Month</SelectItem>
+            <SelectItem value="day">Hoy</SelectItem>
+            <SelectItem value="week">Esta Semana</SelectItem>
+            <SelectItem value="month">Este Mes</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -134,7 +134,7 @@ export default function SalesDashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">No data available</p>
+              <p className="text-center text-muted-foreground py-8">No hay datos disponibles</p>
             )}
           </CardContent>
         </Card>
@@ -164,7 +164,7 @@ export default function SalesDashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">No data available</p>
+              <p className="text-center text-muted-foreground py-8">No hay datos disponibles</p>
             )}
           </CardContent>
         </Card>

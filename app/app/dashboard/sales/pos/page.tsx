@@ -32,7 +32,7 @@ export default function POSPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'TRANSFER' | 'OTHER'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'OTRO'>('EFECTIVO');
   const [discount, setDiscount] = useState(0);
   const [tax, setTax] = useState(0);
   const [notes, setNotes] = useState('');
@@ -58,7 +58,7 @@ export default function POSPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to load data',
+        description: 'Error al cargar datos',
         variant: 'destructive',
       });
     }
@@ -130,7 +130,7 @@ export default function POSPage() {
     if (cart.length === 0) {
       toast({
         title: 'Error',
-        description: 'Cart is empty',
+        description: 'El carrito está vacío',
         variant: 'destructive',
       });
       return;
@@ -161,12 +161,12 @@ export default function POSPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to create sale');
+      if (!response.ok) throw new Error('Error al crear venta');
 
       const sale = await response.json();
 
       toast({
-        title: 'Success',
+        title: 'Éxito',
         description: `Sale ${sale.saleNumber} completed successfully`,
       });
 
@@ -191,14 +191,14 @@ export default function POSPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Point of Sale</h1>
+      <h1 className="text-3xl font-bold mb-6">Punto de Venta</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Products & Services */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Products</CardTitle>
+              <CardTitle>Productos</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -225,7 +225,7 @@ export default function POSPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Services</CardTitle>
+              <CardTitle>Servicios</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -242,7 +242,7 @@ export default function POSPage() {
                       addServiceToCart(service, professionalId, commissionRate);
                     }}>
                       <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Select professional" />
+                        <SelectValue placeholder="Seleccionar profesional" />
                       </SelectTrigger>
                       <SelectContent>
                         {professionals.map(prof => (
@@ -270,7 +270,7 @@ export default function POSPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {cart.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Cart is empty</p>
+                <p className="text-center text-muted-foreground py-8">El carrito está vacío</p>
               ) : (
                 <>
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -309,7 +309,7 @@ export default function POSPage() {
                       <span className="font-semibold">${subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span>Discount:</span>
+                      <span>Descuento:</span>
                       <Input
                         type="number"
                         min="0"
@@ -319,7 +319,7 @@ export default function POSPage() {
                       />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span>Tax:</span>
+                      <span>Impuesto:</span>
                       <Input
                         type="number"
                         min="0"
@@ -340,14 +340,14 @@ export default function POSPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Checkout</CardTitle>
+              <CardTitle>Finalizar Compra</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label>Client (Optional)</Label>
+                <Label>Cliente (Opcional)</Label>
                 <Select value={selectedClient} onValueChange={setSelectedClient}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select client" />
+                    <SelectValue placeholder="Seleccionar cliente" />
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map(client => (
@@ -360,26 +360,26 @@ export default function POSPage() {
               </div>
 
               <div>
-                <Label>Payment Method</Label>
+                <Label>Método de Pago</Label>
                 <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CASH">Cash</SelectItem>
-                    <SelectItem value="CARD">Card</SelectItem>
-                    <SelectItem value="TRANSFER">Transfer</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
+                    <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                    <SelectItem value="TARJETA">Tarjeta</SelectItem>
+                    <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                    <SelectItem value="OTRO">Otro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label>Notes</Label>
+                <Label>Notas</Label>
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Additional notes..."
+                  placeholder="Notas adicionales..."
                   rows={3}
                 />
               </div>
@@ -396,7 +396,7 @@ export default function POSPage() {
                     Processing...
                   </>
                 ) : (
-                  'Complete Sale'
+                  'Completar Venta'
                 )}
               </Button>
             </CardContent>

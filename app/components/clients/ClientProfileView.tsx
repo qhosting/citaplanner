@@ -30,13 +30,13 @@ export default function ClientProfileView({ clientData }: ClientProfileViewProps
 
   const getGenderLabel = (gender: string | null) => {
     switch (gender) {
-      case 'MALE':
+      case 'MASCULINO':
         return 'Masculino';
-      case 'FEMALE':
+      case 'FEMENINO':
         return 'Femenino';
-      case 'OTHER':
+      case 'OTRO':
         return 'Otro';
-      case 'PREFER_NOT_TO_SAY':
+      case 'PREFIERO_NO_DECIR':
         return 'Prefiero no decir';
       default:
         return 'No especificado';
@@ -74,7 +74,7 @@ export default function ClientProfileView({ clientData }: ClientProfileViewProps
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
             <Avatar className="h-24 w-24">
               {clientData.profilePhotoUrl ? (
-                <AvatarImage src={clientData.profilePhotoUrl} alt="Profile" />
+                <AvatarImage src={clientData.profilePhotoUrl} alt="Perfil" />
               ) : (
                 <AvatarFallback className="bg-blue-100 text-blue-800 text-2xl">
                   {getInitials()}

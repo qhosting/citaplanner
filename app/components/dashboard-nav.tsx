@@ -25,7 +25,7 @@ interface DashboardNavProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home, current: false },
+  { name: 'Panel de Control', href: '/dashboard', icon: Home, current: false },
   { name: 'Agenda', href: '/dashboard/appointments', icon: CalendarDays, current: false },
   { name: 'Clientes', href: '/dashboard/clients', icon: Users, current: false },
   { name: 'Pagos', href: '/dashboard/payments', icon: CreditCard, current: false },

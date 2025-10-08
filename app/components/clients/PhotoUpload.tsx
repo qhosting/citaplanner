@@ -117,7 +117,7 @@ export default function PhotoUpload({
           {/* Photo Preview */}
           <Avatar className="h-32 w-32">
             {displayPhoto ? (
-              <AvatarImage src={displayPhoto} alt="Profile" />
+              <AvatarImage src={displayPhoto} alt="Perfil" />
             ) : (
               <AvatarFallback className="bg-gray-100">
                 <Camera className="h-12 w-12 text-gray-400" />

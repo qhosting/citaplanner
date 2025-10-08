@@ -53,7 +53,7 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
       date: appointment.startTime ? new Date(appointment.startTime).toISOString().split('T')[0] : '',
       time: appointment.startTime ? new Date(appointment.startTime).toTimeString().slice(0, 5) : '',
       notes: appointment.notes || '',
-      status: appointment.status || 'PENDING'
+      status: appointment.status || 'PENDIENTE'
     } : {
       clientId: '',
       serviceId: '',
@@ -61,7 +61,7 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
       date: '',
       time: '',
       notes: '',
-      status: 'PENDING'
+      status: 'PENDIENTE'
     }
   })
 
@@ -181,11 +181,11 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
                   <SelectValue placeholder="Estado de la cita" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PENDING">Pendiente</SelectItem>
-                  <SelectItem value="CONFIRMED">Confirmada</SelectItem>
-                  <SelectItem value="COMPLETED">Completada</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelada</SelectItem>
-                  <SelectItem value="NO_SHOW">No Asistió</SelectItem>
+                  <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                  <SelectItem value="CONFIRMADA">Confirmada</SelectItem>
+                  <SelectItem value="COMPLETADA">Completada</SelectItem>
+                  <SelectItem value="CANCELADA">Cancelada</SelectItem>
+                  <SelectItem value="NO_ASISTIÓ">No Asistió</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -238,7 +238,7 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleStatusChange('CONFIRMED')}
+                  onClick={() => handleStatusChange('CONFIRMADA')}
                   disabled={isLoading}
                   className="flex-1"
                 >
@@ -248,7 +248,7 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleStatusChange('COMPLETED')}
+                  onClick={() => handleStatusChange('COMPLETADA')}
                   disabled={isLoading}
                   className="flex-1"
                 >
