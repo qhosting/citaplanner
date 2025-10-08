@@ -98,7 +98,7 @@ export async function createClientProfile(data: CreateClientProfileInput) {
       },
     });
 
-    return { success: true, profile };
+    return { success: true, data: profile };
   } catch (error) {
     console.error('Error creating client profile:', error);
     return {
@@ -147,7 +147,7 @@ export async function getClientProfile(id: string) {
       return { success: false, error: 'Client profile not found' };
     }
 
-    return { success: true, profile };
+    return { success: true, data: profile };
   } catch (error) {
     console.error('Error fetching client profile:', error);
     return {
@@ -193,7 +193,7 @@ export async function getClientProfileByUserId(userId: string) {
     });
 
     // Non-breaking: Return null if no profile exists (user can still function)
-    return { success: true, profile };
+    return { success: true, data: profile };
   } catch (error) {
     console.error('Error fetching client profile by user ID:', error);
     return {
@@ -226,7 +226,7 @@ export async function updateClientProfile(data: UpdateClientProfileInput) {
       },
     });
 
-    return { success: true, profile };
+    return { success: true, data: profile };
   } catch (error) {
     console.error('Error updating client profile:', error);
     return {
@@ -308,7 +308,7 @@ export async function listClientProfiles(filters: ClientProfileFilters = {}) {
 
     return {
       success: true,
-      profiles,
+      data: profiles,
       pagination: {
         total,
         skip,
