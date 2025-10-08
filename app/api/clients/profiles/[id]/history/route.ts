@@ -10,9 +10,10 @@ import { getCompleteClientHistory } from '@/lib/clients/historyService';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,7 +21,7 @@ export async function GET(
 
     const searchParams = request.nextUrl.searchParams;
     const filters = {
-      clientProfileId: params.id,
+      clientProfileId: id,
       startDate: searchParams.get('startDate')
         ? new Date(searchParams.get('startDate')!)
         : undefined,

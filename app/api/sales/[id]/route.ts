@@ -1,21 +1,22 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { saleService } from '@/services/saleService';
+import { authOptions } from '@/lib/auth-options';
+import { saleService } from '@/lib/services/saleService';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const tenantId = (session.user as any).tenantId;
-    const sale = await saleService.getSaleById(params.id, tenantId);
+    const sale = await saleService.getSaleById(id, tenantId);
 
     if (!sale) {
       return NextResponse.json({ error: 'Sale not found' }, { status: 404 });

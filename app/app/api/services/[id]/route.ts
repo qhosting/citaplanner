@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { serviceManager } from '@/lib/services/serviceManager';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -12,7 +12,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
-    const service = await serviceManager.getService(params.id);
+    const { id } = await params;
+    const service = await serviceManager.getService(id);
     if (!service) {
       return NextResponse.json({ error: 'Service not found' }, { status: 404 });
     }
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -31,8 +32,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
-    const updatedService = await serviceManager.updateService(params.id, body);
+    const updatedService = await serviceManager.updateService(id, body);
     return NextResponse.json(updatedService);
   } catch (error: any) {
     console.error('Service API error:', error);
@@ -40,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -48,7 +50,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   try {
-    await serviceManager.deleteService(params.id);
+    const { id } = await params;
+    await serviceManager.deleteService(id);
     return new NextResponse(null, { status: 204 });
   } catch (error: any) {
     console.error('Service API error:', error);

@@ -1,8 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { inventoryService } from '@/services/inventoryService';
+import { authOptions } from '@/lib/auth-options';
+import { inventoryService } from '@/lib/services/inventoryService';
 
 export async function POST(request: NextRequest) {
   try {

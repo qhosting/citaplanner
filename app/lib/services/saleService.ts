@@ -34,7 +34,7 @@ export class SaleService {
 
     // Calculate totals
     let subtotal = 0;
-    const processedItems = [];
+    const processedItems: any[] = [];
 
     for (const item of data.items) {
       const itemSubtotal = item.quantity * item.unitPrice;

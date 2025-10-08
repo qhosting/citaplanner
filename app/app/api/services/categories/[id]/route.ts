@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { serviceManager } from '@/lib/services/serviceManager';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -12,7 +12,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
-    const category = await serviceManager.getCategory(params.id);
+    const { id } = await params;
+    const category = await serviceManager.getCategory(id);
     if (!category) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -31,8 +32,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
-    const updatedCategory = await serviceManager.updateCategory(params.id, body);
+    const updatedCategory = await serviceManager.updateCategory(id, body);
     return NextResponse.json(updatedCategory);
   } catch (error: any) {
     console.error('Category API error:', error);
@@ -40,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -48,7 +50,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   try {
-    await serviceManager.deleteCategory(params.id);
+    const { id } = await params;
+    await serviceManager.deleteCategory(id);
     return new NextResponse(null, { status: 204 });
   } catch (error: any) {
     console.error('Category API error:', error);

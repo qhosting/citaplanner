@@ -1,10 +1,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { reportService } from '@/services/reportService';
-import { productService } from '@/services/productService';
-import { commissionService } from '@/services/commissionService';
+import { authOptions } from '@/lib/auth-options';
+import { reportService } from '@/lib/services/reportService';
+import { productService } from '@/lib/services/productService';
+import { commissionService } from '@/lib/services/commissionService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     });
 
     const totalPendingCommissions = pendingCommissions.reduce(
-      (sum, comm) => sum + comm.totalCommissions,
+      (sum: number, comm: any) => sum + comm.totalCommissions,
       0
     );
 
