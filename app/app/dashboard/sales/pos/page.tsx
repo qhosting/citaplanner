@@ -40,8 +40,8 @@ export default function POSPage() {
       const [productsRes, servicesRes, clientsRes, professionalsRes] = await Promise.all([
         fetch('/api/products?isActive=true'),
         fetch('/api/services'),
-        fetch('/api/users?role=CLIENT'),
-        fetch('/api/users?role=STAFF'),
+        fetch('/api/clients'),
+        fetch('/api/users?role=PROFESSIONAL'),
       ]);
 
       const [productsData, servicesData, clientsData, professionalsData] = await Promise.all([
