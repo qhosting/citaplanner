@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { PrismaClient, AppointmentStatus } from '@prisma/client';
+import { triggerAppointmentReschedule, triggerAppointmentCancellation } from '@/lib/middleware/notificationMiddleware';
 
 const prisma = new PrismaClient();
 
@@ -200,6 +201,15 @@ export async function PUT(
       },
     });
 
+    // Disparar notificación de reprogramación si cambió la fecha/hora
+    if (updateData.startTime && updateData.startTime.getTime() !== existingAppointment.startTime.getTime()) {
+      triggerAppointmentReschedule(
+        params.id,
+        existingAppointment.startTime,
+        updateData.startTime
+      );
+    }
+
     return NextResponse.json({ success: true, data: appointment });
   } catch (error: any) {
     console.error('Error al actualizar cita:', error);
@@ -238,6 +248,9 @@ export async function DELETE(
         status: AppointmentStatus.CANCELLED,
       },
     });
+
+    // Disparar notificación de cancelación
+    triggerAppointmentCancellation(params.id);
 
     return NextResponse.json({ success: true, data: appointment });
   } catch (error: any) {

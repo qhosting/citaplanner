@@ -537,6 +537,146 @@ async function main() {
   console.log('   Profesional 1: pro1@citaplanner.com / prof123')
   console.log('   Profesional 2: pro2@citaplanner.com / prof123')
   console.log('   Recepcionista: recepcionista@citaplanner.com / prof123')
+  // ============================================
+  // 10. VERIFICAR Y CREAR PLANTILLAS DE NOTIFICACIONES
+  // ============================================
+  console.log('\n🔔 Verificando plantillas de notificaciones...')
+  
+  const defaultTemplates = [
+    // WhatsApp Templates
+    {
+      name: 'Recordatorio de Cita - WhatsApp',
+      type: 'APPOINTMENT_REMINDER',
+      channel: 'WHATSAPP',
+      subject: null,
+      message: 'Hola {{clientName}}, te recordamos tu cita el {{appointmentDate}} a las {{appointmentTime}} para {{serviceName}}. ¡Te esperamos en {{businessName}}!',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Confirmación de Cita - WhatsApp',
+      type: 'APPOINTMENT_CONFIRMATION',
+      channel: 'WHATSAPP',
+      subject: null,
+      message: '¡Cita confirmada! {{clientName}}, tu cita está programada para el {{appointmentDate}} a las {{appointmentTime}} para {{serviceName}}. Nos vemos en {{businessName}}.',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Cancelación de Cita - WhatsApp',
+      type: 'APPOINTMENT_CANCELLATION',
+      channel: 'WHATSAPP',
+      subject: null,
+      message: 'Hola {{clientName}}, tu cita del {{appointmentDate}} a las {{appointmentTime}} ha sido cancelada. Si deseas reagendar, contáctanos en {{businessPhone}}.',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Reprogramación de Cita - WhatsApp',
+      type: 'APPOINTMENT_RESCHEDULE',
+      channel: 'WHATSAPP',
+      subject: null,
+      message: 'Hola {{clientName}}, tu cita ha sido reprogramada para el {{appointmentDate}} a las {{appointmentTime}}. ¡Te esperamos!',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Promoción - WhatsApp',
+      type: 'PROMOTION',
+      channel: 'WHATSAPP',
+      subject: null,
+      message: '¡Oferta especial en {{businessName}}! {{promotionMessage}} Válido hasta {{promotionValidUntil}}. ¡No te lo pierdas!',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Recordatorio de Pago - WhatsApp',
+      type: 'PAYMENT_REMINDER',
+      channel: 'WHATSAPP',
+      subject: null,
+      message: 'Hola {{clientName}}, tienes un pago pendiente de {{amount}}. Por favor, realiza tu pago antes del {{dueDate}}. Gracias.',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    // Push Notification Templates
+    {
+      name: 'Recordatorio de Cita - Push',
+      type: 'APPOINTMENT_REMINDER',
+      channel: 'PUSH',
+      subject: 'Recordatorio de Cita',
+      message: 'Tu cita para {{serviceName}} es el {{appointmentDate}} a las {{appointmentTime}}',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Confirmación de Cita - Push',
+      type: 'APPOINTMENT_CONFIRMATION',
+      channel: 'PUSH',
+      subject: 'Cita Confirmada',
+      message: 'Tu cita para {{serviceName}} ha sido confirmada para el {{appointmentDate}} a las {{appointmentTime}}',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Cancelación de Cita - Push',
+      type: 'APPOINTMENT_CANCELLATION',
+      channel: 'PUSH',
+      subject: 'Cita Cancelada',
+      message: 'Tu cita del {{appointmentDate}} a las {{appointmentTime}} ha sido cancelada',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+    {
+      name: 'Promoción - Push',
+      type: 'PROMOTION',
+      channel: 'PUSH',
+      subject: 'Oferta Especial',
+      message: '{{promotionMessage}}',
+      isActive: true,
+      isDefault: true,
+      tenantId: tenant.id,
+    },
+  ]
+
+  let templatesCreated = 0
+  let templatesExisting = 0
+
+  for (const templateData of defaultTemplates) {
+    const existing = await prisma.notificationTemplate.findFirst({
+      where: {
+        name: templateData.name,
+        type: templateData.type,
+        channel: templateData.channel,
+      }
+    })
+
+    if (!existing) {
+      await prisma.notificationTemplate.create({
+        data: templateData
+      })
+      templatesCreated++
+      console.log(`   ✅ Plantilla creada: ${templateData.name}`)
+    } else {
+      templatesExisting++
+    }
+  }
+
+  if (templatesCreated > 0) {
+    console.log(`   📝 ${templatesCreated} plantillas creadas`)
+  }
+  if (templatesExisting > 0) {
+    console.log(`   ℹ️  ${templatesExisting} plantillas ya existían`)
+  }
+
   console.log('\n' + '═'.repeat(60))
 }
 
