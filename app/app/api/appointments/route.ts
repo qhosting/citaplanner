@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { PrismaClient, AppointmentStatus } from '@prisma/client';
+import { triggerAppointmentConfirmation } from '@/lib/middleware/notificationMiddleware';
 
 const prisma = new PrismaClient();
 
@@ -218,6 +219,9 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Disparar notificación de confirmación de forma asíncrona
+    triggerAppointmentConfirmation(appointment.id);
 
     return NextResponse.json({ success: true, data: appointment }, { status: 201 });
   } catch (error: any) {
