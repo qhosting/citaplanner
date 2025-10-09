@@ -8,6 +8,7 @@
 
 import { PrismaClient, NotificationType, NotificationChannel, NotificationStatus } from '@prisma/client';
 import { evolutionApiService } from './evolutionApi';
+import { pushService } from './pushService';
 import { processTemplate } from '../utils/templateProcessor';
 
 const prisma = new PrismaClient();
@@ -131,7 +132,7 @@ export class NotificationService {
           sendResult = await this.sendSMS(recipient, finalMessage);
           break;
         case NotificationChannel.PUSH:
-          sendResult = await this.sendPush(recipient, finalMessage);
+          sendResult = await this.sendPush(recipient, finalMessage, params.variables);
           break;
         default:
           sendResult = {
@@ -374,10 +375,50 @@ export class NotificationService {
     return { success: false, error: 'SMS no implementado' };
   }
 
-  private async sendPush(recipient: any, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    // TODO: Implementar envío de Push
-    console.log('[NotificationService] Push no implementado aún');
-    return { success: false, error: 'Push no implementado' };
+  private async sendPush(recipient: any, message: string, variables?: Record<string, any>): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      // Obtener subscripciones activas del usuario
+      const subscriptions = await pushService.getUserSubscriptions(recipient.id);
+
+      if (subscriptions.length === 0) {
+        return { success: false, error: 'Usuario no tiene subscripciones push activas' };
+      }
+
+      // Preparar payload
+      const payload = {
+        title: variables?.subject || 'CitaPlanner',
+        body: message,
+        icon: '/icon-192x192.png',
+        url: variables?.url || '/',
+        data: variables?.data || {}
+      };
+
+      // Enviar a todas las subscripciones del usuario
+      const results = await pushService.sendBulkPushNotifications(subscriptions, payload);
+
+      // Marcar subscripciones fallidas como inactivas
+      for (const result of results.results) {
+        if (!result.result.success && result.result.error?.includes('expirada')) {
+          await pushService.markSubscriptionInactive(result.subscription.endpoint);
+        }
+      }
+
+      if (results.sent > 0) {
+        return {
+          success: true,
+          messageId: `push-${Date.now()}-${results.sent}`
+        };
+      } else {
+        return {
+          success: false,
+          error: `No se pudo enviar a ningún dispositivo (${results.failed} fallidos)`
+        };
+      }
+
+    } catch (error: any) {
+      console.error('[NotificationService] Error enviando push:', error);
+      return { success: false, error: error.message || 'Error al enviar push notification' };
+    }
   }
 }
 
