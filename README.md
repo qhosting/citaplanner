@@ -3,6 +3,25 @@
 
 Sistema de gestión de citas para múltiples negocios.
 
+## 🆕 Última Actualización: Persistencia Completa de Base de Datos
+
+**Versión**: 1.0.0 | **Fecha**: 9 de Octubre, 2025
+
+### ✨ Nuevas Características
+
+- ✅ **Persistencia Total**: Los datos nunca se pierden entre deployments
+- ✅ **Backups Automáticos**: Sistema de respaldo diario, semanal y mensual
+- ✅ **Seed Idempotente**: Datos iniciales sin duplicación
+- ✅ **Fácil Restauración**: Proceso simple para recuperar datos
+- ✅ **Verificación de Integridad**: Checksums y validación automática
+
+### 📚 Documentación Nueva
+
+- [Guía Completa de Persistencia](./docs/DB-PERSISTENCIA.md)
+- [Configuración de Volúmenes en Easypanel](./docs/EASYPANEL-VOLUME-CONFIG.md)
+- [Guía Rápida de Backup y Restauración](./docs/BACKUP-RESTORE-GUIDE.md)
+- [Checklist de Deployment](./DEPLOYMENT-CHECKLIST.md)
+
 ## 🚀 Despliegue Rápido en Easypanel
 
 CitaPlanner incluye un sistema completo de automatización para Easypanel que configura todo automáticamente.
