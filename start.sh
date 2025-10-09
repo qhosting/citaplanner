@@ -41,9 +41,35 @@ $PRISMA_CMD db push --accept-data-loss || echo "⚠️  Error en sync, continuan
 echo "⚙️  Regenerando cliente Prisma en container..."
 $PRISMA_CMD generate || echo "⚠️  Error generando cliente Prisma"
 
-# Ejecutar seed solo si no hay datos
+# Ejecutar seed solo si no hay usuarios
 echo "🌱 Verificando si necesita seed..."
-$PRISMA_CMD db seed || echo "⚠️  Seed omitido (datos existentes)"
+echo "📊 Consultando tabla users..."
+
+# Check if users table is empty using node script
+USER_COUNT=$(node -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+prisma.user.count()
+  .then(count => { console.log(count); process.exit(0); })
+  .catch(err => { console.error('0'); process.exit(0); })
+  .finally(() => prisma.\$disconnect());
+" 2>/dev/null || echo "0")
+
+echo "👥 Usuarios en la base de datos: $USER_COUNT"
+
+if [ "$USER_COUNT" = "0" ]; then
+    echo "🌱 Base de datos vacía - ejecutando seed..."
+    if [ -f "scripts/seed.ts" ]; then
+        echo "✅ Seed script encontrado, ejecutando..."
+        npm run seed || echo "⚠️  Error ejecutando seed, continuando..."
+    else
+        echo "⚠️  Script seed.ts no encontrado en scripts/"
+        echo "📁 Contenido de scripts/:"
+        ls -la scripts/ 2>/dev/null || echo "Directorio scripts/ no existe"
+    fi
+else
+    echo "✅ Base de datos ya tiene usuarios, omitiendo seed"
+fi
 
 # Verificar archivos necesarios
 echo "🔍 Verificando archivos del build standalone..."

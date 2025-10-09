@@ -255,47 +255,78 @@ EOF
 
 # Ejecutar migraciones de Prisma
 run_migrations() {
-    log_info "Ejecutando migraciones de Prisma..."
+    log_info "════════════════════════════════════════════════════════════════"
+    log_info "🔄 APLICANDO MIGRACIONES DE BASE DE DATOS"
+    log_info "════════════════════════════════════════════════════════════════"
     
-    # Primero intentar migrate deploy (recomendado para producción)
-    log_debug "Intentando migrate deploy..."
+    # Listar migraciones pendientes
+    log_info "Verificando migraciones pendientes..."
+    eval "$PRISMA_CMD migrate status" 2>&1 | tee /tmp/migrate-status.log
+    
+    # Ejecutar migrate deploy (método recomendado para producción)
+    log_info ""
+    log_info "Aplicando migraciones con 'prisma migrate deploy'..."
     if eval "$PRISMA_CMD migrate deploy" 2>&1 | tee /tmp/migrate-deploy.log; then
-        log_success "Migraciones aplicadas correctamente con migrate deploy"
+        log_success "✅ Migraciones aplicadas correctamente"
+        log_info ""
+        log_info "Estado final de migraciones:"
+        eval "$PRISMA_CMD migrate status" 2>&1
         return 0
     else
-        log_warning "migrate deploy falló, intentando con db push..."
-        
-        # Fallback a db push si migrate deploy falla
-        log_debug "Intentando db push..."
-        if eval "$PRISMA_CMD db push --accept-data-loss --skip-generate" 2>&1 | tee /tmp/db-push.log; then
-            log_success "Esquema de base de datos sincronizado correctamente con db push"
-            return 0
-        else
-            log_error "Error al aplicar migraciones con ambos métodos"
-            log_error "Revisa los logs en /tmp/migrate-deploy.log y /tmp/db-push.log"
-            return 1
-        fi
+        log_error "════════════════════════════════════════════════════════════════"
+        log_error "❌ ERROR AL APLICAR MIGRACIONES"
+        log_error "════════════════════════════════════════════════════════════════"
+        log_error ""
+        log_error "Las migraciones de Prisma fallaron. Esto puede deberse a:"
+        log_error "  1. Conflictos en el esquema de la base de datos"
+        log_error "  2. Migraciones incompatibles con el estado actual de la BD"
+        log_error "  3. Errores de sintaxis SQL en los archivos de migración"
+        log_error ""
+        log_error "📋 Logs disponibles en:"
+        log_error "   • /tmp/migrate-status.log - Estado de migraciones"
+        log_error "   • /tmp/migrate-deploy.log - Salida de migrate deploy"
+        log_error ""
+        log_error "🔧 Soluciones posibles:"
+        log_error "   1. Revisa los logs arriba para identificar el error específico"
+        log_error "   2. Verifica que todas las migraciones estén en el repositorio"
+        log_error "   3. Si es necesario, ejecuta 'prisma migrate resolve' manualmente"
+        log_error "   4. Considera hacer un backup de la BD antes de resolver"
+        log_error ""
+        log_error "════════════════════════════════════════════════════════════════"
+        return 1
     fi
 }
 
 # Generar cliente Prisma
 generate_prisma_client() {
-    log_info "Generando cliente Prisma..."
+    log_info "════════════════════════════════════════════════════════════════"
+    log_info "⚙️  GENERANDO CLIENTE PRISMA"
+    log_info "════════════════════════════════════════════════════════════════"
     
     if eval "$PRISMA_CMD generate" 2>&1 | tee /tmp/prisma-generate.log; then
-        log_success "Cliente Prisma generado correctamente"
+        log_success "✅ Cliente Prisma generado correctamente"
         
         # Verificar que el cliente se generó correctamente
         if [ -d "node_modules/.prisma/client" ]; then
-            log_success "Cliente Prisma verificado en node_modules/.prisma/client"
+            log_success "✅ Cliente Prisma verificado en node_modules/.prisma/client"
         else
-            log_warning "Cliente Prisma generado pero no encontrado en ubicación esperada"
+            log_warning "⚠️  Cliente Prisma generado pero no encontrado en ubicación esperada"
         fi
         
         return 0
     else
-        log_error "Error al generar cliente Prisma"
-        log_error "Revisa el log en /tmp/prisma-generate.log"
+        log_error "════════════════════════════════════════════════════════════════"
+        log_error "❌ ERROR AL GENERAR CLIENTE PRISMA"
+        log_error "════════════════════════════════════════════════════════════════"
+        log_error ""
+        log_error "El cliente Prisma no pudo generarse. Esto puede deberse a:"
+        log_error "  1. Errores en el archivo schema.prisma"
+        log_error "  2. Dependencias faltantes o corruptas"
+        log_error "  3. Problemas de permisos en node_modules"
+        log_error ""
+        log_error "📋 Log disponible en: /tmp/prisma-generate.log"
+        log_error ""
+        log_error "════════════════════════════════════════════════════════════════"
         return 1
     fi
 }
@@ -312,10 +343,11 @@ EOF
 )
     
     if [ -z "$user_count" ] || [ "$user_count" = "0" ]; then
-        log_info "Base de datos vacía - se ejecutará el seed"
+        log_info "Base de datos vacía o sin usuarios - se ejecutará el seed"
         return 0
     else
         log_info "Base de datos contiene $user_count usuarios - seed no necesario"
+        log_info "El seed es idempotente y puede ejecutarse manualmente si es necesario"
         return 1
     fi
 }

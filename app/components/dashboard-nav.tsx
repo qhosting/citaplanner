@@ -13,7 +13,11 @@ import {
   CreditCard, 
   Settings,
   Building,
-  Clock
+  Clock,
+  ShoppingCart,
+  Package,
+  BarChart3,
+  DollarSign
 } from 'lucide-react'
 
 interface DashboardNavProps {
@@ -21,11 +25,15 @@ interface DashboardNavProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home, current: false },
+  { name: 'Panel de Control', href: '/dashboard', icon: Home, current: false },
   { name: 'Agenda', href: '/dashboard/appointments', icon: CalendarDays, current: false },
   { name: 'Clientes', href: '/dashboard/clients', icon: Users, current: false },
   { name: 'Pagos', href: '/dashboard/payments', icon: CreditCard, current: false },
   { name: 'Servicios', href: '/dashboard/services', icon: UserCheck, current: false },
+  { name: 'Ventas', href: '/dashboard/sales/pos', icon: ShoppingCart, current: false },
+  { name: 'Inventario', href: '/dashboard/inventory/products', icon: Package, current: false },
+  { name: 'Reportes', href: '/dashboard/sales', icon: BarChart3, current: false },
+  { name: 'Comisiones', href: '/dashboard/commissions', icon: DollarSign, current: false },
   { name: 'Sucursales', href: '/dashboard/branches', icon: Building, current: false },
   { name: 'Horarios', href: '/dashboard/working-hours', icon: Clock, current: false },
   { name: 'Configuración', href: '/dashboard/settings', icon: Settings, current: false },
@@ -85,7 +93,7 @@ export function DashboardNav({ session }: DashboardNavProps) {
         {/* Footer con versión */}
         <div className="p-4 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
-            CitaPlanner MVP v1.0
+            CitaPlanner Pro v2.0
           </p>
         </div>
       </div>

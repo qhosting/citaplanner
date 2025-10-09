@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,33 +23,22 @@ interface AppointmentModalProps {
   onClose: () => void
   appointment?: any
   mode: 'create' | 'edit'
+  onSuccess?: () => void
 }
 
-const mockClients = [
-  { id: '1', name: 'María González', phone: '+52 55 1234 5678' },
-  { id: '2', name: 'Carlos Ruiz', phone: '+52 55 9876 5432' },
-  { id: '3', name: 'Sofia Martínez', phone: '+52 55 5555 1111' }
-]
-
-const mockServices = [
-  { id: '1', name: 'Corte de Cabello', duration: 60, price: 350 },
-  { id: '2', name: 'Peinado', duration: 45, price: 250 },
-  { id: '3', name: 'Manicure', duration: 90, price: 200 }
-]
-
-const mockProfessionals = [
-  { id: '1', name: 'Ana López' },
-  { id: '2', name: 'Juan Pérez' },
-  { id: '3', name: 'Laura García' }
-]
-
-export function AppointmentModal({ isOpen, onClose, appointment, mode }: AppointmentModalProps) {
+export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess }: AppointmentModalProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [clients, setClients] = useState<any[]>([])
+  const [services, setServices] = useState<any[]>([])
+  const [professionals, setProfessionals] = useState<any[]>([])
+  const [branches, setBranches] = useState<any[]>([])
+  
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: appointment ? {
       clientId: appointment.clientId || '',
       serviceId: appointment.serviceId || '',
-      professionalId: appointment.userId || '',
+      userId: appointment.userId || '',
+      branchId: appointment.branchId || '',
       date: appointment.startTime ? new Date(appointment.startTime).toISOString().split('T')[0] : '',
       time: appointment.startTime ? new Date(appointment.startTime).toTimeString().slice(0, 5) : '',
       notes: appointment.notes || '',
@@ -57,7 +46,8 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
     } : {
       clientId: '',
       serviceId: '',
-      professionalId: '',
+      userId: '',
+      branchId: '',
       date: '',
       time: '',
       notes: '',
@@ -65,26 +55,85 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
     }
   })
 
-  const selectedService = mockServices.find(s => s.id === watch('serviceId'))
+  useEffect(() => {
+    if (isOpen) {
+      loadData()
+    }
+  }, [isOpen])
+
+  const loadData = async () => {
+    try {
+      const [clientsRes, servicesRes, professionalsRes, branchesRes] = await Promise.all([
+        fetch('/api/clients'),
+        fetch('/api/services'),
+        fetch('/api/users?role=PROFESSIONAL'),
+        fetch('/api/admin/branches'),
+      ])
+
+      const [clientsData, servicesData, professionalsData, branchesData] = await Promise.all([
+        clientsRes.json(),
+        servicesRes.json(),
+        professionalsRes.json(),
+        branchesRes.json(),
+      ])
+
+      setClients(clientsData.success ? clientsData.data : [])
+      setServices(servicesData.success ? servicesData.data : [])
+      setProfessionals(professionalsData.success ? professionalsData.data : [])
+      setBranches(branchesData.success ? branchesData.data : [])
+
+      // Si solo hay una sucursal, seleccionarla automáticamente
+      if (branchesData.success && branchesData.data.length === 1 && !appointment) {
+        setValue('branchId', branchesData.data[0].id)
+      }
+    } catch (error) {
+      console.error('Error al cargar datos:', error)
+      toast.error('Error al cargar datos del formulario')
+    }
+  }
+
+  const selectedService = services.find(s => s.id === watch('serviceId'))
 
   const onSubmit = async (data: any) => {
     setIsLoading(true)
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const startTime = new Date(`${data.date}T${data.time}`)
       
       const appointmentData = {
-        ...data,
-        startTime: new Date(`${data.date}T${data.time}`),
-        endTime: selectedService ? new Date(new Date(`${data.date}T${data.time}`).getTime() + selectedService.duration * 60000) : null
+        clientId: data.clientId,
+        serviceId: data.serviceId,
+        userId: data.userId,
+        branchId: data.branchId,
+        startTime: startTime.toISOString(),
+        status: data.status,
+        notes: data.notes || null,
       }
 
-      console.log('Appointment data:', appointmentData)
+      const url = mode === 'create' 
+        ? '/api/appointments'
+        : `/api/appointments/${appointment.id}`
+      
+      const method = mode === 'create' ? 'POST' : 'PUT'
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(appointmentData),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al guardar la cita')
+      }
       
       toast.success(mode === 'create' ? 'Cita creada exitosamente' : 'Cita actualizada exitosamente')
+      onSuccess?.()
       onClose()
-    } catch (error) {
-      toast.error('Error al guardar la cita')
+    } catch (error: any) {
+      toast.error(error.message || 'Error al guardar la cita')
     } finally {
       setIsLoading(false)
     }
@@ -94,11 +143,32 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
     if (mode === 'edit' && appointment) {
       setIsLoading(true)
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        toast.success(`Cita marcada como ${newStatus.toLowerCase()}`)
+        const response = await fetch(`/api/appointments/${appointment.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus }),
+        })
+
+        const result = await response.json()
+
+        if (!result.success) {
+          throw new Error(result.error || 'Error al actualizar estado')
+        }
+
+        const statusLabels: any = {
+          CONFIRMED: 'confirmada',
+          COMPLETED: 'completada',
+          CANCELLED: 'cancelada',
+          NO_SHOW: 'marcada como no asistió',
+        }
+
+        toast.success(`Cita ${statusLabels[newStatus] || 'actualizada'}`)
+        onSuccess?.()
         onClose()
-      } catch (error) {
-        toast.error('Error al actualizar estado')
+      } catch (error: any) {
+        toast.error(error.message || 'Error al actualizar estado')
       } finally {
         setIsLoading(false)
       }
@@ -124,15 +194,15 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="clientId">Cliente</Label>
+              <Label htmlFor="clientId">Cliente *</Label>
               <Select value={watch('clientId')} onValueChange={(value) => setValue('clientId', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockClients.map((client) => (
+                  {clients.map((client) => (
                     <SelectItem key={client.id} value={client.id}>
-                      {client.name} - {client.phone}
+                      {client.firstName} {client.lastName} - {client.phone}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -141,13 +211,13 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="serviceId">Servicio</Label>
+              <Label htmlFor="serviceId">Servicio *</Label>
               <Select value={watch('serviceId')} onValueChange={(value) => setValue('serviceId', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar servicio" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockServices.map((service) => (
+                  {services.map((service) => (
                     <SelectItem key={service.id} value={service.id}>
                       {service.name} - {service.duration}min - ${service.price}
                     </SelectItem>
@@ -158,20 +228,37 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="professionalId">Profesional</Label>
-              <Select value={watch('professionalId')} onValueChange={(value) => setValue('professionalId', value)}>
+              <Label htmlFor="userId">Profesional *</Label>
+              <Select value={watch('userId')} onValueChange={(value) => setValue('userId', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar profesional" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockProfessionals.map((prof) => (
+                  {professionals.map((prof) => (
                     <SelectItem key={prof.id} value={prof.id}>
-                      {prof.name}
+                      {prof.firstName} {prof.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {errors.professionalId && <p className="text-sm text-red-500">Profesional es requerido</p>}
+              {errors.userId && <p className="text-sm text-red-500">Profesional es requerido</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="branchId">Sucursal *</Label>
+              <Select value={watch('branchId')} onValueChange={(value) => setValue('branchId', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar sucursal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.branchId && <p className="text-sm text-red-500">Sucursal es requerida</p>}
             </div>
 
             <div className="space-y-2">
@@ -191,7 +278,7 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date">Fecha</Label>
+              <Label htmlFor="date">Fecha *</Label>
               <Input
                 id="date"
                 type="date"
@@ -201,7 +288,7 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode }: Appoint
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="time">Hora</Label>
+              <Label htmlFor="time">Hora *</Label>
               <Input
                 id="time"
                 type="time"
