@@ -12,15 +12,16 @@ export async function POST(
     const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 
     const tenantId = (session.user as any).tenantId;
-    const { notes } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const { notes } = body;
 
     const commission = await commissionService.markAsPaid(id, tenantId, notes);
-    return NextResponse.json(commission);
+    return NextResponse.json({ success: true, data: commission });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

@@ -6,15 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
 import { Plus, Search, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import { ProductModal } from '@/components/modals/product-modal';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
 
   useEffect(() => {
     loadProducts();
@@ -28,17 +31,25 @@ export default function ProductsPage() {
       if (result.success) {
         setProducts(result.data || []);
       } else {
-        throw new Error(result.error || 'Failed to load products');
+        throw new Error(result.error || 'Error al cargar productos');
       }
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to load products',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Error al cargar productos');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateProduct = () => {
+    setSelectedProduct(null);
+    setModalMode('create');
+    setIsModalOpen(true);
+  };
+
+  const handleEditProduct = (product: any) => {
+    setSelectedProduct(product);
+    setModalMode('edit');
+    setIsModalOpen(true);
   };
 
   const filteredProducts = products.filter(product =>
@@ -56,11 +67,9 @@ export default function ProductsPage() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Productos</h1>
-        <Button asChild>
-          <Link href="/dashboard/inventory/products/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Agregar Producto
-          </Link>
+        <Button onClick={handleCreateProduct}>
+          <Plus className="mr-2 h-4 w-4" />
+          Agregar Producto
         </Button>
       </div>
 
@@ -136,8 +145,13 @@ export default function ProductsPage() {
                     <Button variant="outline" size="sm" className="flex-1" asChild>
                       <Link href={`/dashboard/inventory/products/${product.id}`}>Ver</Link>
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/dashboard/inventory/products/${product.id}/edit`}>Editar</Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleEditProduct(product)}
+                    >
+                      Editar
                     </Button>
                   </div>
                 </CardContent>
@@ -154,6 +168,14 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
       )}
+
+      <ProductModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={selectedProduct}
+        mode={modalMode}
+        onSuccess={loadProducts}
+      />
     </div>
   );
 }

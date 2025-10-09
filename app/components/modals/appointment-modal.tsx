@@ -33,17 +33,8 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
   const [professionals, setProfessionals] = useState<any[]>([])
   const [branches, setBranches] = useState<any[]>([])
   
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
-    defaultValues: appointment ? {
-      clientId: appointment.clientId || '',
-      serviceId: appointment.serviceId || '',
-      userId: appointment.userId || '',
-      branchId: appointment.branchId || '',
-      date: appointment.startTime ? new Date(appointment.startTime).toISOString().split('T')[0] : '',
-      time: appointment.startTime ? new Date(appointment.startTime).toTimeString().slice(0, 5) : '',
-      notes: appointment.notes || '',
-      status: appointment.status || 'PENDING'
-    } : {
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm({
+    defaultValues: {
       clientId: '',
       serviceId: '',
       userId: '',
@@ -55,11 +46,35 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
     }
   })
 
+  // Reset form when appointment changes or modal opens/closes
   useEffect(() => {
     if (isOpen) {
+      if (appointment && mode === 'edit') {
+        reset({
+          clientId: appointment.clientId || '',
+          serviceId: appointment.serviceId || '',
+          userId: appointment.userId || '',
+          branchId: appointment.branchId || '',
+          date: appointment.startTime ? new Date(appointment.startTime).toISOString().split('T')[0] : '',
+          time: appointment.startTime ? new Date(appointment.startTime).toTimeString().slice(0, 5) : '',
+          notes: appointment.notes || '',
+          status: appointment.status || 'PENDING'
+        })
+      } else {
+        reset({
+          clientId: '',
+          serviceId: '',
+          userId: '',
+          branchId: '',
+          date: '',
+          time: '',
+          notes: '',
+          status: 'PENDING'
+        })
+      }
       loadData()
     }
-  }, [isOpen])
+  }, [isOpen, appointment, mode, reset])
 
   const loadData = async () => {
     try {
@@ -200,11 +215,15 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.firstName} {client.lastName} - {client.phone}
-                    </SelectItem>
-                  ))}
+                  {clients.length === 0 ? (
+                    <SelectItem value="no-clients" disabled>No hay clientes disponibles</SelectItem>
+                  ) : (
+                    clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.firstName} {client.lastName} - {client.phone}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.clientId && <p className="text-sm text-red-500">Cliente es requerido</p>}
@@ -217,11 +236,15 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
                   <SelectValue placeholder="Seleccionar servicio" />
                 </SelectTrigger>
                 <SelectContent>
-                  {services.map((service) => (
-                    <SelectItem key={service.id} value={service.id}>
-                      {service.name} - {service.duration}min - ${service.price}
-                    </SelectItem>
-                  ))}
+                  {services.length === 0 ? (
+                    <SelectItem value="no-services" disabled>No hay servicios disponibles</SelectItem>
+                  ) : (
+                    services.map((service) => (
+                      <SelectItem key={service.id} value={service.id}>
+                        {service.name} - {service.duration}min - ${service.price}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.serviceId && <p className="text-sm text-red-500">Servicio es requerido</p>}
@@ -234,11 +257,15 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
                   <SelectValue placeholder="Seleccionar profesional" />
                 </SelectTrigger>
                 <SelectContent>
-                  {professionals.map((prof) => (
-                    <SelectItem key={prof.id} value={prof.id}>
-                      {prof.firstName} {prof.lastName}
-                    </SelectItem>
-                  ))}
+                  {professionals.length === 0 ? (
+                    <SelectItem value="no-professionals" disabled>No hay profesionales disponibles</SelectItem>
+                  ) : (
+                    professionals.map((prof) => (
+                      <SelectItem key={prof.id} value={prof.id}>
+                        {prof.firstName} {prof.lastName}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.userId && <p className="text-sm text-red-500">Profesional es requerido</p>}
@@ -251,11 +278,15 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
                   <SelectValue placeholder="Seleccionar sucursal" />
                 </SelectTrigger>
                 <SelectContent>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
+                  {branches.length === 0 ? (
+                    <SelectItem value="no-branches" disabled>No hay sucursales disponibles</SelectItem>
+                  ) : (
+                    branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.branchId && <p className="text-sm text-red-500">Sucursal es requerida</p>}
