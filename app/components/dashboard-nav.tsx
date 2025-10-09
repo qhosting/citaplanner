@@ -17,7 +17,8 @@ import {
   ShoppingCart,
   Package,
   BarChart3,
-  DollarSign
+  DollarSign,
+  Bell
 } from 'lucide-react'
 
 interface DashboardNavProps {
@@ -34,6 +35,7 @@ const navigation = [
   { name: 'Inventario', href: '/dashboard/inventory/products', icon: Package, current: false },
   { name: 'Reportes', href: '/dashboard/sales', icon: BarChart3, current: false },
   { name: 'Comisiones', href: '/dashboard/commissions', icon: DollarSign, current: false },
+  { name: 'Notificaciones', href: '/dashboard/notifications', icon: Bell, current: false },
   { name: 'Sucursales', href: '/dashboard/branches', icon: Building, current: false },
   { name: 'Horarios', href: '/dashboard/working-hours', icon: Clock, current: false },
   { name: 'Configuración', href: '/dashboard/settings', icon: Settings, current: false },
