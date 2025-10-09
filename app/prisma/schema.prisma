@@ -256,6 +256,8 @@ model User {
   professionalCommissions ProfessionalCommission[]
   saleItemsAsProfessional SaleItem[] @relation("ProfessionalSaleItems")
   
+  calendarConnections ExternalCalendarConnection[]
+
   @@map("users")
 }
 
@@ -390,6 +392,16 @@ model Appointment {
   payments    Payment[]
   notificationLogs NotificationLog[] // Phase 1
   
+
+  // iCloud integration fields (optional)
+  externalConnectionId String?
+  externalConnection   ExternalCalendarConnection? @relation(fields: [externalConnectionId], references: [id], onDelete: SetNull)
+  externalEventUrl     String?
+  externalEventUid     String?
+  externalEtag         String?
+  lastModifiedSource   String?
+  icloudSyncEnabled    Boolean                     @default(false)
+
   @@map("appointments")
 }
 
@@ -482,6 +494,21 @@ enum NotificationStatus {
 }
 
 // Plantillas de notificaciones
+
+// Phase 1: iCalendar Integration Enums
+enum CalendarProvider {
+  ICLOUD_CALDAV
+  GOOGLE_CALENDAR
+  OUTLOOK_CALENDAR
+}
+
+enum SyncStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+  DISCONNECTED
+}
+
 model NotificationTemplate {
   id          String           @id @default(cuid())
   name        String
@@ -833,4 +860,68 @@ model ProfessionalCommission {
   @@index([tenantId, period])
   @@index([professionalId, status])
   @@map("professional_commissions")
+}
+
+
+
+model ExternalCalendarConnection {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider     CalendarProvider
+  calendarUrl  String // CalDAV calendar URL
+  calendarName String? // Display name of the calendar
+
+  // Encrypted credentials (using node-forge AES-256)
+  encryptedUsername String @db.Text // Apple ID for iCloud
+  encryptedPassword String @db.Text // App-specific password
+
+  // Sync state management
+  syncStatus    SyncStatus @default(ACTIVE)
+  syncToken     String?    @db.Text // WebDAV-Sync token (RFC 6578)
+  ctag          String? // CTag for fallback polling
+  lastSyncAt    DateTime?
+  lastSyncError String?    @db.Text
+
+  // Configuration
+  syncInterval      Int     @default(300) // Seconds between syncs (default 5 min)
+  bidirectionalSync Boolean @default(true) // Enable two-way sync
+  autoExport        Boolean @default(true) // Auto-export new appointments
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  syncLogs    CalendarSyncLog[]
+  Appointment Appointment[]
+
+  @@unique([userId, provider, calendarUrl])
+  @@map("external_calendar_connections")
+}
+
+model CalendarSyncLog {
+  id           String                     @id @default(cuid())
+  connectionId String
+  connection   ExternalCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  syncType  String // "INITIAL", "POLL", "MANUAL", "PUSH"
+  direction String // "IMPORT", "EXPORT", "BIDIRECTIONAL"
+  status    String // "SUCCESS", "PARTIAL", "FAILED"
+
+  eventsImported    Int @default(0)
+  eventsExported    Int @default(0)
+  eventsUpdated     Int @default(0)
+  eventsDeleted     Int @default(0)
+  conflictsResolved Int @default(0)
+
+  errorMessage String? @db.Text
+  errorDetails String? @db.Text // JSON with detailed error info
+
+  duration Int? // Sync duration in milliseconds
+
+  createdAt DateTime @default(now())
+
+  @@index([connectionId, createdAt])
+  @@map("calendar_sync_logs")
 }
