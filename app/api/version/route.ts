@@ -1,20 +1,14 @@
-
 import { NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Leer la versión del package.json
-    const packageJsonPath = join(process.cwd(), 'package.json');
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-    const version = packageJson.version || '1.0.0';
-
-    // Obtener información de build desde variables de entorno
-    const buildDate = process.env.BUILD_DATE || new Date().toISOString();
-    const commitSha = process.env.GIT_COMMIT_SHA || 'unknown';
+    // Leer la versión desde variables de entorno generadas en build time
+    // El script prebuild (generate-version.sh) genera estas variables
+    const version = process.env.APP_VERSION || process.env.NEXT_PUBLIC_APP_VERSION || '1.3.0';
+    const buildDate = process.env.BUILD_DATE || process.env.NEXT_PUBLIC_BUILD_DATE || new Date().toISOString();
+    const commitSha = process.env.GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_GIT_COMMIT_SHA || 'unknown';
 
     return NextResponse.json({
       success: true,
