@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
+import { VersionDisplay } from '@/components/version-display'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 
@@ -26,6 +27,7 @@ export default async function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         <Providers session={session}>
           {children}
+          <VersionDisplay />
         </Providers>
       </body>
     </html>
