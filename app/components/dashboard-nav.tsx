@@ -90,10 +90,10 @@ export function DashboardNav({ session }: DashboardNavProps) {
           })}
         </div>
 
-        {/* Footer con versión */}
+        {/* Footer - versión dinámica mostrada en esquina inferior derecha */}
         <div className="p-4 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
-            CitaPlanner Pro v2.0
+            CitaPlanner Pro
           </p>
         </div>
       </div>
