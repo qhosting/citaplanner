@@ -343,10 +343,11 @@ EOF
 )
     
     if [ -z "$user_count" ] || [ "$user_count" = "0" ]; then
-        log_info "Base de datos vacía - se ejecutará el seed"
+        log_info "Base de datos vacía o sin usuarios - se ejecutará el seed"
         return 0
     else
         log_info "Base de datos contiene $user_count usuarios - seed no necesario"
+        log_info "El seed es idempotente y puede ejecutarse manualmente si es necesario"
         return 1
     fi
 }
