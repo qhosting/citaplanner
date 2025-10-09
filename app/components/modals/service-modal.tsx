@@ -31,16 +31,8 @@ export function ServiceModal({ isOpen, onClose, service, mode, onSuccess }: Serv
   const [isLoading, setIsLoading] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
   
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
-    defaultValues: service ? {
-      name: service.name || '',
-      description: service.description || '',
-      duration: service.duration || 60,
-      price: service.price || 0,
-      categoryId: service.categoryId || '',
-      color: service.color || '#3B82F6',
-      isActive: service.isActive !== undefined ? service.isActive : true,
-    } : {
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm({
+    defaultValues: {
       name: '',
       description: '',
       duration: 60,
@@ -51,11 +43,33 @@ export function ServiceModal({ isOpen, onClose, service, mode, onSuccess }: Serv
     }
   })
 
+  // Reset form when service changes or modal opens/closes
   useEffect(() => {
     if (isOpen) {
+      if (service && mode === 'edit') {
+        reset({
+          name: service.name || '',
+          description: service.description || '',
+          duration: service.duration || 60,
+          price: service.price || 0,
+          categoryId: service.categoryId || '',
+          color: service.color || '#3B82F6',
+          isActive: service.isActive !== undefined ? service.isActive : true,
+        })
+      } else {
+        reset({
+          name: '',
+          description: '',
+          duration: 60,
+          price: 0,
+          categoryId: '',
+          color: '#3B82F6',
+          isActive: true,
+        })
+      }
       loadCategories()
     }
-  }, [isOpen])
+  }, [isOpen, service, mode, reset])
 
   const loadCategories = async () => {
     try {

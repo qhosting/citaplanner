@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 
     const tenantId = (session.user as any).tenantId;
@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
     }
 
     const commissions = await commissionService.getCommissions(tenantId, filters);
-    return NextResponse.json(commissions);
+    return NextResponse.json({ success: true, data: commissions });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
