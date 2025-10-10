@@ -40,7 +40,20 @@ export async function createClient(data: CreateClientInput) {
     });
 
     if (!tenant) {
-      throw new Error('Tenant not found');
+      console.error(`❌ Tenant not found: ${data.tenantId}`);
+      console.error('📊 User session tenantId:', data.tenantId);
+      
+      // List available tenants for debugging
+      const availableTenants = await prisma.tenant.findMany({
+        select: { id: true, name: true, email: true, isActive: true }
+      });
+      console.error('📋 Available tenants:', JSON.stringify(availableTenants, null, 2));
+      
+      throw new Error(
+        `Tenant no encontrado (${data.tenantId}). ` +
+        'Verifique que su cuenta esté correctamente configurada. ' +
+        'Si el problema persiste, contacte al administrador.'
+      );
     }
 
     // Check if client with same phone already exists for this tenant
