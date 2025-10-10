@@ -1,3 +1,51 @@
+#!/bin/bash
+
+# Script para aplicar las correcciones críticas del sistema de notificaciones
+# Fecha: 9 de Octubre, 2025
+# Versión: 1.0
+
+set -e
+
+echo "🔧 Aplicando correcciones críticas para CitaPlanner..."
+echo ""
+
+# Verificar que estamos en el directorio correcto
+if [ ! -f "package.json" ] && [ ! -d "app" ]; then
+    echo "❌ Error: Este script debe ejecutarse desde la raíz del repositorio citaplanner"
+    exit 1
+fi
+
+echo "📁 Paso 1: Corrigiendo estructura de directorios..."
+
+# Crear directorio correcto si no existe
+mkdir -p app/app/dashboard/notifications
+
+# Mover archivo a ubicación correcta
+if [ -f "app/dashboard/notifications/page.tsx" ]; then
+    echo "   Moviendo app/dashboard/notifications/page.tsx → app/app/dashboard/notifications/"
+    mv app/dashboard/notifications/page.tsx app/app/dashboard/notifications/
+    
+    # Eliminar directorio vacío
+    rmdir app/dashboard/notifications 2>/dev/null || true
+    rmdir app/dashboard 2>/dev/null || true
+    
+    echo "   ✅ Archivo movido correctamente"
+else
+    echo "   ⚠️  Archivo ya está en la ubicación correcta o no existe"
+fi
+
+echo ""
+echo "🗄️  Paso 2: Corrigiendo migración de Prisma..."
+
+MIGRATION_FILE="app/prisma/migrations/20251009072859_notifications_system/migration.sql"
+
+if [ -f "$MIGRATION_FILE" ]; then
+    # Crear backup
+    cp "$MIGRATION_FILE" "${MIGRATION_FILE}.backup"
+    echo "   Backup creado: ${MIGRATION_FILE}.backup"
+    
+    # Aplicar corrección
+    cat > "$MIGRATION_FILE" << 'EOF'
 -- CreateEnum
 CREATE TYPE "NotificationChannel" AS ENUM ('WHATSAPP', 'PUSH', 'EMAIL', 'SMS');
 
@@ -115,3 +163,26 @@ ALTER TABLE "push_subscriptions" ADD CONSTRAINT "push_subscriptions_tenantId_fke
 
 -- AddForeignKey
 ALTER TABLE "push_subscriptions" ADD CONSTRAINT "push_subscriptions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EOF
+    
+    echo "   ✅ Migración corregida"
+else
+    echo "   ⚠️  Archivo de migración no encontrado"
+fi
+
+echo ""
+echo "✅ Correcciones aplicadas exitosamente"
+echo ""
+echo "📋 Próximos pasos:"
+echo "   1. Revisar los cambios: git status"
+echo "   2. Crear commit: git add . && git commit -m 'fix: notifications deployment critical fixes'"
+echo "   3. Crear PR o push directo a main"
+echo ""
+echo "🔍 Para verificar localmente:"
+echo "   cd app"
+echo "   npm install --legacy-peer-deps"
+echo "   npx prisma generate"
+echo "   npx prisma migrate deploy"
+echo "   npm run build"
+echo "   npm run dev"
+echo ""
