@@ -63,6 +63,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Log session info for debugging tenant issues
+    console.log('📝 Creating client with session:', {
+      userId: session.user.id,
+      tenantId: session.user.tenantId,
+      userEmail: session.user.email,
+    });
+
     // Add tenantId from session
     const clientData = {
       ...body,
