@@ -28,14 +28,13 @@ if [ ! -d "node_modules/@prisma/client" ]; then
     $PRISMA_CMD generate || echo "❌ Error generando cliente Prisma"
 fi
 
-# Verificar que la base de datos esté disponible  
-echo "📊 Verificando conexión a la base de datos..."
-# Use db push for existing database with data (fixes P3005)
-$PRISMA_CMD db push --force-reset --accept-data-loss || $PRISMA_CMD db push --accept-data-loss || echo "⚠️  Error en db push, continuando..."
+# Aplicar migraciones de forma segura (NUNCA borra datos existentes)
+echo "🔄 Aplicando migraciones de base de datos..."
+$PRISMA_CMD migrate deploy || echo "⚠️  Error en migraciones, continuando..."
 
-# Skip migrations for existing database - use db push instead
-echo "🔄 Sincronizando esquema de base de datos..."
-$PRISMA_CMD db push --accept-data-loss || echo "⚠️  Error en sync, continuando..."
+# Verificar estado de migraciones
+echo "📊 Verificando estado de migraciones..."
+$PRISMA_CMD migrate status || echo "⚠️  No se pudo verificar estado de migraciones"
 
 # Regenerar cliente Prisma en container
 echo "⚙️  Regenerando cliente Prisma en container..."
