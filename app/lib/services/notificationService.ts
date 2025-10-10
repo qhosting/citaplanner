@@ -263,12 +263,22 @@ export class NotificationService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          recipient: {
+          tenant: {
             select: {
               id: true,
               name: true,
-              email: true,
-              phone: true,
+            }
+          },
+          appointment: {
+            select: {
+              id: true,
+              scheduledAt: true,
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
             }
           }
         }
