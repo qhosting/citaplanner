@@ -108,7 +108,7 @@ export class NotificationService {
           type: params.type,
           channel: params.channel,
           recipientId: params.recipientId,
-          recipientName: recipient.name,
+          recipientName: `${recipient.firstName} ${recipient.lastName}`.trim(),
           recipientContact: this.getRecipientContact(recipient, params.channel),
           subject: params.variables?.subject || null,
           message: finalMessage,
@@ -332,7 +332,8 @@ export class NotificationService {
       where: { id: recipientId },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         phone: true,
       }
