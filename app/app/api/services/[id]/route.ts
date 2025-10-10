@@ -4,10 +4,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { serviceManager } from '@/lib/services/serviceManager';
 
+// Configuración explícita de runtime para Next.js 14
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  console.log('[Services API] GET by ID request received:', params.id);
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -38,6 +43,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  console.log('[Services API] PUT request received for ID:', params.id);
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -64,6 +70,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  console.log('[Services API] DELETE request received for ID:', params.id);
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {

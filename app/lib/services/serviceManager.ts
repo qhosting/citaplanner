@@ -65,6 +65,23 @@ export class ServiceManager {
     });
   }
 
+  async getServiceById(id: string, tenantId: string): Promise<Service | null> {
+    return prisma.service.findFirst({
+      where: { 
+        id,
+        tenantId 
+      },
+      include: {
+        category: true,
+        serviceUsers: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+  }
+
   async getServicesByTenant(tenantId: string, includeInactive = false): Promise<Service[]> {
     return prisma.service.findMany({
       where: {
@@ -80,7 +97,13 @@ export class ServiceManager {
     });
   }
 
-  async updateService(id: string, data: UpdateServiceData): Promise<Service> {
+  async updateService(id: string, tenantId: string, data: UpdateServiceData): Promise<Service> {
+    // Verificar que el servicio pertenece al tenant
+    const service = await this.getServiceById(id, tenantId);
+    if (!service) {
+      throw new Error('Service not found or access denied');
+    }
+
     return prisma.service.update({
       where: { id },
       data,
@@ -90,7 +113,13 @@ export class ServiceManager {
     });
   }
 
-  async deleteService(id: string): Promise<Service> {
+  async deleteService(id: string, tenantId: string): Promise<Service> {
+    // Verificar que el servicio pertenece al tenant
+    const service = await this.getServiceById(id, tenantId);
+    if (!service) {
+      throw new Error('Service not found or access denied');
+    }
+
     return prisma.service.delete({
       where: { id },
     });
