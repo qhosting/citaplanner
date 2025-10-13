@@ -120,6 +120,17 @@ export class ServiceManager {
       throw new Error('Service not found or access denied');
     }
 
+    // Verificar si el servicio tiene citas asociadas
+    const appointmentCount = await prisma.appointment.count({
+      where: { serviceId: id },
+    });
+
+    console.log(`[ServiceManager] Checking appointments for service ${id}: ${appointmentCount} found`);
+
+    if (appointmentCount > 0) {
+      throw new Error(`APPOINTMENTS_EXIST:${appointmentCount}`);
+    }
+
     return prisma.service.delete({
       where: { id },
     });
