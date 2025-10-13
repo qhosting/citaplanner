@@ -88,11 +88,11 @@ export function ServiceModal({ isOpen, onClose, service, mode, onSuccess }: Serv
     setIsLoading(true)
     try {
       const serviceData = {
-        name: data.name,
-        description: data.description || null,
+        name: data.name.trim(),
+        description: data.description?.trim() || null,
         duration: parseInt(data.duration),
         price: parseFloat(data.price),
-        categoryId: data.categoryId || null,
+        categoryId: data.categoryId && data.categoryId !== '' ? data.categoryId : null,
         color: data.color,
         isActive: data.isActive,
       }
