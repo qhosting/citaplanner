@@ -85,24 +85,69 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
         fetch('/api/admin/branches'),
       ])
 
+      // Verificar respuestas HTTP
+      if (!clientsRes.ok) {
+        console.error('❌ Error al cargar clientes:', clientsRes.status, clientsRes.statusText)
+        const errorData = await clientsRes.json().catch(() => ({ error: 'Error desconocido' }))
+        console.error('Detalles del error:', errorData)
+        toast.error(`Error al cargar clientes: ${errorData.error || clientsRes.statusText}`)
+      }
+
+      if (!servicesRes.ok) {
+        console.error('❌ Error al cargar servicios:', servicesRes.status, servicesRes.statusText)
+      }
+
+      if (!professionalsRes.ok) {
+        console.error('❌ Error al cargar profesionales:', professionalsRes.status, professionalsRes.statusText)
+      }
+
+      if (!branchesRes.ok) {
+        console.error('❌ Error al cargar sucursales:', branchesRes.status, branchesRes.statusText)
+      }
+
       const [clientsData, servicesData, professionalsData, branchesData] = await Promise.all([
-        clientsRes.json(),
-        servicesRes.json(),
-        professionalsRes.json(),
-        branchesRes.json(),
+        clientsRes.ok ? clientsRes.json() : { success: false, data: [] },
+        servicesRes.ok ? servicesRes.json() : { success: false, data: [] },
+        professionalsRes.ok ? professionalsRes.json() : { success: false, data: [] },
+        branchesRes.ok ? branchesRes.json() : { success: false, data: [] },
       ])
+
+      console.log('📊 Datos cargados:', {
+        clientes: clientsData.success ? clientsData.data.length : 0,
+        servicios: servicesData.success ? servicesData.data.length : 0,
+        profesionales: professionalsData.success ? professionalsData.data.length : 0,
+        sucursales: branchesData.success ? branchesData.data.length : 0,
+      })
 
       setClients(clientsData.success ? clientsData.data : [])
       setServices(servicesData.success ? servicesData.data : [])
       setProfessionals(professionalsData.success ? professionalsData.data : [])
       setBranches(branchesData.success ? branchesData.data : [])
 
+      // Mostrar advertencias si faltan datos
+      if (!clientsData.success || clientsData.data.length === 0) {
+        console.warn('⚠️ No hay clientes disponibles')
+        toast.error('No hay clientes disponibles. Por favor, cree un cliente primero.')
+      }
+
+      if (!servicesData.success || servicesData.data.length === 0) {
+        console.warn('⚠️ No hay servicios disponibles')
+      }
+
+      if (!professionalsData.success || professionalsData.data.length === 0) {
+        console.warn('⚠️ No hay profesionales disponibles')
+      }
+
+      if (!branchesData.success || branchesData.data.length === 0) {
+        console.warn('⚠️ No hay sucursales disponibles')
+      }
+
       // Si solo hay una sucursal, seleccionarla automáticamente
       if (branchesData.success && branchesData.data.length === 1 && !appointment) {
         setValue('branchId', branchesData.data[0].id)
       }
     } catch (error) {
-      console.error('Error al cargar datos:', error)
+      console.error('❌ Error crítico al cargar datos:', error)
       toast.error('Error al cargar datos del formulario')
     }
   }
