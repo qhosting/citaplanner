@@ -92,8 +92,14 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const newService = await serviceManager.createService({
+    // Limpiar categoryId si es cadena vacía
+    const cleanedData = {
       ...body,
+      categoryId: body.categoryId === '' ? null : body.categoryId,
+    };
+
+    const newService = await serviceManager.createService({
+      ...cleanedData,
       tenantId,
     });
     
