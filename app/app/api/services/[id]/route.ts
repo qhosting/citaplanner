@@ -121,20 +121,75 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    console.log('[Services API] Unauthorized - No session');
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
   }
 
   const tenantId = (session.user as any).tenantId;
 
   if (!tenantId) {
-    return NextResponse.json({ success: false, error: 'Tenant ID not found' }, { status: 400 });
+    console.log('[Services API] Tenant ID not found in session');
+    return NextResponse.json({ success: false, error: 'ID de tenant no encontrado' }, { status: 400 });
   }
 
   try {
+    console.log('[Services API] Attempting to delete service:', { serviceId: params.id, tenantId });
     await serviceManager.deleteService(params.id, tenantId);
-    return NextResponse.json({ success: true, message: 'Service deleted successfully' });
+    console.log('[Services API] Service deleted successfully:', params.id);
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Servicio eliminado exitosamente' 
+    });
   } catch (error: any) {
-    console.error('Service API error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
+    console.error('[Services API] DELETE error:', error);
+    console.error('[Services API] Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    });
+
+    // Manejar error de citas asociadas
+    if (error.message && error.message.startsWith('APPOINTMENTS_EXIST:')) {
+      const appointmentCount = error.message.split(':')[1];
+      console.log(`[Services API] Cannot delete service - ${appointmentCount} appointments exist`);
+      return NextResponse.json({ 
+        success: false, 
+        error: `No se puede eliminar el servicio porque tiene ${appointmentCount} cita(s) asociada(s)`,
+        details: {
+          reason: 'APPOINTMENTS_EXIST',
+          appointmentCount: parseInt(appointmentCount),
+          suggestion: 'Puede desactivar el servicio en lugar de eliminarlo para mantener el historial de citas'
+        }
+      }, { status: 400 });
+    }
+
+    // Manejar error de restricción de clave foránea (P2003)
+    if (error.code === 'P2003') {
+      console.log('[Services API] Foreign key constraint violation detected');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'No se puede eliminar el servicio porque tiene registros asociados (citas, ventas, etc.)',
+        details: {
+          reason: 'FOREIGN_KEY_CONSTRAINT',
+          suggestion: 'Puede desactivar el servicio en lugar de eliminarlo para mantener la integridad de los datos'
+        }
+      }, { status: 400 });
+    }
+
+    // Manejar error de servicio no encontrado
+    if (error.message === 'Service not found or access denied') {
+      console.log('[Services API] Service not found or access denied');
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Servicio no encontrado o acceso denegado' 
+      }, { status: 404 });
+    }
+
+    // Error genérico
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message || 'Error interno del servidor al eliminar el servicio' 
+    }, { status: 500 });
   }
 }
