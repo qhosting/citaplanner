@@ -5,99 +5,100 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Building, Plus, Search, Edit, Trash2, MapPin, Mail, Phone, Users } from 'lucide-react'
-import { BranchModal } from '@/components/modals/branch-modal'
+import { User, Plus, Search, Edit, Trash2, Building, Mail, Phone } from 'lucide-react'
+import { ProfessionalModal } from '@/components/modals/professional-modal'
 import { toast } from 'react-hot-toast'
 
-export default function BranchesPage() {
-  const [branches, setBranches] = useState<any[]>([])
-  const [filteredBranches, setFilteredBranches] = useState<any[]>([])
+export default function ProfessionalsPage() {
+  const [professionals, setProfessionals] = useState<any[]>([])
+  const [filteredProfessionals, setFilteredProfessionals] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedBranch, setSelectedBranch] = useState<any>(null)
+  const [selectedProfessional, setSelectedProfessional] = useState<any>(null)
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
 
   useEffect(() => {
-    loadBranches()
+    loadProfessionals()
   }, [])
 
   useEffect(() => {
-    filterBranches()
-  }, [searchTerm, branches])
+    filterProfessionals()
+  }, [searchTerm, professionals])
 
-  const loadBranches = async () => {
+  const loadProfessionals = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('/api/branches?includeInactive=true')
+      const response = await fetch('/api/professionals?includeInactive=true')
       const result = await response.json()
 
       if (result.success) {
-        setBranches(result.data || [])
+        setProfessionals(result.data || [])
       } else {
-        toast.error('Error al cargar sucursales')
+        toast.error('Error al cargar profesionales')
       }
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error al cargar sucursales')
+      toast.error('Error al cargar profesionales')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const filterBranches = () => {
+  const filterProfessionals = () => {
     if (!searchTerm.trim()) {
-      setFilteredBranches(branches)
+      setFilteredProfessionals(professionals)
       return
     }
 
     const term = searchTerm.toLowerCase()
-    const filtered = branches.filter(branch => 
-      branch.name.toLowerCase().includes(term) ||
-      (branch.address && branch.address.toLowerCase().includes(term)) ||
-      (branch.phone && branch.phone.toLowerCase().includes(term))
+    const filtered = professionals.filter(prof => 
+      prof.firstName.toLowerCase().includes(term) ||
+      prof.lastName.toLowerCase().includes(term) ||
+      prof.email.toLowerCase().includes(term) ||
+      (prof.phone && prof.phone.toLowerCase().includes(term))
     )
-    setFilteredBranches(filtered)
+    setFilteredProfessionals(filtered)
   }
 
   const handleCreate = () => {
-    setSelectedBranch(null)
+    setSelectedProfessional(null)
     setModalMode('create')
     setIsModalOpen(true)
   }
 
-  const handleEdit = (branch: any) => {
-    setSelectedBranch(branch)
+  const handleEdit = (professional: any) => {
+    setSelectedProfessional(professional)
     setModalMode('edit')
     setIsModalOpen(true)
   }
 
-  const handleDelete = async (branch: any) => {
-    if (!confirm(`¿Estás seguro de desactivar la sucursal ${branch.name}?`)) {
+  const handleDelete = async (professional: any) => {
+    if (!confirm(`¿Estás seguro de desactivar al profesional ${professional.firstName} ${professional.lastName}?`)) {
       return
     }
 
     try {
-      const response = await fetch(`/api/branches/${branch.id}`, {
+      const response = await fetch(`/api/professionals/${professional.id}`, {
         method: 'DELETE',
       })
 
       const result = await response.json()
 
       if (result.success) {
-        toast.success('✅ Sucursal desactivada exitosamente')
-        loadBranches()
+        toast.success('✅ Profesional desactivado exitosamente')
+        loadProfessionals()
       } else {
-        toast.error(result.error || 'Error al desactivar sucursal')
+        toast.error(result.error || 'Error al desactivar profesional')
       }
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error al desactivar sucursal')
+      toast.error('Error al desactivar profesional')
     }
   }
 
   const handleModalSuccess = () => {
-    loadBranches()
+    loadProfessionals()
   }
 
   return (
@@ -105,27 +106,27 @@ export default function BranchesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Building className="h-6 w-6" />
-            Gestión de Sucursales
+            <User className="h-6 w-6" />
+            Gestión de Profesionales
           </h1>
           <p className="text-gray-600 mt-1">
-            Administra las sucursales de tu negocio
+            Administra el equipo de profesionales de tu negocio
           </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
-          Nueva Sucursal
+          Nuevo Profesional
         </Button>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <CardTitle>Sucursales Registradas</CardTitle>
+            <CardTitle>Profesionales Registrados</CardTitle>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Buscar sucursal..."
+                placeholder="Buscar profesional..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -136,68 +137,70 @@ export default function BranchesPage() {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">Cargando sucursales...</p>
+              <p className="text-gray-500">Cargando profesionales...</p>
             </div>
-          ) : filteredBranches.length === 0 ? (
+          ) : filteredProfessionals.length === 0 ? (
             <div className="text-center py-12">
-              <Building className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchTerm ? 'No se encontraron sucursales' : 'No hay sucursales registradas'}
+                {searchTerm ? 'No se encontraron profesionales' : 'No hay profesionales registrados'}
               </h3>
               <p className="text-gray-600 mb-6">
                 {searchTerm 
                   ? 'Intenta con otros términos de búsqueda'
-                  : 'Comienza agregando tu primera sucursal'}
+                  : 'Comienza agregando tu primer profesional'}
               </p>
               {!searchTerm && (
                 <Button onClick={handleCreate}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Agregar Sucursal
+                  Agregar Profesional
                 </Button>
               )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredBranches.map((branch) => (
-                <Card key={branch.id} className={!branch.isActive ? 'opacity-60' : ''}>
+              {filteredProfessionals.map((professional) => (
+                <Card key={professional.id} className={!professional.isActive ? 'opacity-60' : ''}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                          <Building className="h-6 w-6 text-blue-600" />
-                        </div>
+                        {professional.avatar ? (
+                          <img
+                            src={professional.avatar}
+                            alt={`${professional.firstName} ${professional.lastName}`}
+                            className="h-12 w-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <User className="h-6 w-6 text-blue-600" />
+                          </div>
+                        )}
                         <div>
-                          <h3 className="font-semibold text-gray-900">{branch.name}</h3>
-                          {!branch.isActive && (
-                            <span className="text-xs text-red-600 font-medium">Inactiva</span>
+                          <h3 className="font-semibold text-gray-900">
+                            {professional.firstName} {professional.lastName}
+                          </h3>
+                          {!professional.isActive && (
+                            <span className="text-xs text-red-600 font-medium">Inactivo</span>
                           )}
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-2 text-sm text-gray-600">
-                      {branch.address && (
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <span className="line-clamp-2">{branch.address}</span>
-                        </div>
-                      )}
-                      {branch.phone && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        <span className="truncate">{professional.email}</span>
+                      </div>
+                      {professional.phone && (
                         <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4" />
-                          <span>{branch.phone}</span>
+                          <span>{professional.phone}</span>
                         </div>
                       )}
-                      {branch.email && (
+                      {professional.branch && (
                         <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          <span className="truncate">{branch.email}</span>
-                        </div>
-                      )}
-                      {branch.users && branch.users.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <span>{branch.users.length} profesional(es)</span>
+                          <Building className="h-4 w-4" />
+                          <span>{professional.branch.name}</span>
                         </div>
                       )}
                     </div>
@@ -206,7 +209,7 @@ export default function BranchesPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleEdit(branch)}
+                        onClick={() => handleEdit(professional)}
                         className="flex-1"
                       >
                         <Edit className="h-4 w-4 mr-1" />
@@ -215,7 +218,7 @@ export default function BranchesPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(branch)}
+                        onClick={() => handleDelete(professional)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -229,10 +232,10 @@ export default function BranchesPage() {
         </CardContent>
       </Card>
 
-      <BranchModal
+      <ProfessionalModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        branch={selectedBranch}
+        professional={selectedProfessional}
         mode={modalMode}
         onSuccess={handleModalSuccess}
       />
