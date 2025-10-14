@@ -6,6 +6,196 @@ All notable changes to CitaPlanner will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2025-10-14
+
+### Added - Fase 4: Vista de Calendario por Profesional
+
+#### Dependencias
+- **react-big-calendar** - Librería de calendario interactivo
+- **date-fns** - Manejo de fechas y localización
+- **@types/react-big-calendar** - Tipos TypeScript
+
+#### Backend
+
+- **CalendarManager Service** (600+ líneas)
+  - `getCalendarEvents()` - Obtener eventos con filtros avanzados
+  - `getProfessionalAvailability()` - Calcular disponibilidad completa
+  - `validateAvailability()` - Validar antes de crear/mover citas
+  - `getCalendarStatistics()` - Estadísticas del calendario
+  - `getAvailableSlots()` - Slots disponibles para agendar
+  - `validateCalendarAccess()` - Validación de permisos por rol
+  - Integración con `scheduleManager` (Fase 1)
+  - Integración con `branchAssignments` (Fase 2)
+  - Manejo de horarios override por sucursal
+  - Procesamiento de excepciones (vacaciones, bajas)
+
+#### API Endpoints
+- `GET /api/calendar/professional/[id]` - Eventos del calendario con filtros
+- `GET /api/calendar/availability/[professionalId]` - Disponibilidad y horarios
+- `GET /api/calendar/availability/[professionalId]/slots` - Slots disponibles
+- `POST /api/calendar/availability/validate` - Validar disponibilidad
+- `POST /api/calendar/appointments` - Crear cita desde calendario
+- `PATCH /api/calendar/appointments/[id]/reschedule` - Reprogramar cita (drag & drop)
+- `GET /api/calendar/statistics/[professionalId]` - Estadísticas del calendario
+- `GET /api/professionals/me` - Datos del profesional autenticado
+
+#### Tipos TypeScript (400+ líneas)
+- `CalendarEvent` - Evento del calendario con metadata completa
+- `CalendarEventResource` - Datos de la cita (cliente, servicio, estado)
+- `AvailabilityBlock` - Bloques de disponibilidad (regular/exception/override)
+- `ProfessionalAvailability` - Disponibilidad completa de profesional
+- `CalendarFilters` - Filtros avanzados del calendario
+- `CalendarView` - Vistas del calendario (month/week/day/agenda)
+- `CalendarStatistics` - Estadísticas y métricas del calendario
+- Helpers: `createCalendarEventFromAppointment()`, `getStatusColor()`, `getDateRangeForView()`
+
+#### Frontend Components
+
+- **ProfessionalCalendar** (300+ líneas)
+  - Integración completa con react-big-calendar
+  - Vistas: mensual, semanal, diaria, agenda
+  - Drag & drop para reprogramar citas
+  - Resize de eventos
+  - Estilos personalizados por estado
+  - Visualización de disponibilidad
+  - Localización en español
+  - Responsive design
+
+- **CalendarFilters** (150+ líneas)
+  - Selector de vista (mes/semana/día/agenda)
+  - Filtro por profesional (admin/gerente)
+  - Filtro por sucursal
+  - Filtro por estado de cita
+  - Filtro por servicio
+  - Aplicación en tiempo real
+
+- **CalendarLegend** (100+ líneas)
+  - Leyenda de colores por estado
+  - Indicadores de disponibilidad
+  - Diseño compacto y claro
+
+- **AppointmentModal** (350+ líneas)
+  - Tres modos: crear, editar, ver
+  - Formulario completo con validaciones
+  - Auto-cálculo de endTime según servicio
+  - Botón de cancelar cita
+  - Manejo de errores inline
+  - Estados visuales
+
+#### Páginas
+- `/dashboard/calendar/page.tsx` - Página principal del calendario (500+ líneas)
+  - Estado completo del calendario
+  - Gestión de eventos y disponibilidad
+  - Integración con API endpoints
+  - Manejo de drag & drop
+  - Sistema de filtros
+  - Modal de citas
+  - Permisos por rol
+  - Loading states
+  - Error handling
+
+#### Funcionalidades Implementadas
+
+##### Vistas del Calendario
+- ✅ Vista mensual - Resumen del mes completo
+- ✅ Vista semanal - 7 días con slots de tiempo
+- ✅ Vista diaria - Día detallado con todos los slots
+- ✅ Vista agenda - Lista cronológica de citas
+
+##### Gestión de Citas
+- ✅ **Crear citas** - Click en slot disponible → Modal → Crear
+- ✅ **Editar citas** - Click en evento → Modal → Editar
+- ✅ **Cancelar citas** - Botón en modal con confirmación
+- ✅ **Reprogramar (Drag & Drop)** - Arrastrar evento → Validar → Guardar
+- ✅ **Resize de eventos** - Ajustar duración visualmente
+
+##### Validaciones Automáticas
+- ✅ Horario dentro de disponibilidad
+- ✅ Sin solapamientos con otras citas
+- ✅ Respeto a excepciones (vacaciones, bajas)
+- ✅ Duración correcta del servicio
+- ✅ Permisos por rol
+
+##### Visualización de Disponibilidad
+- ✅ Bloques disponibles (fondo blanco, clickeable)
+- ✅ Bloques no disponibles (fondo gris, bloqueado)
+- ✅ Excepciones (vacaciones) diferenciadas
+- ✅ Horarios override por sucursal
+
+##### Filtros Avanzados
+- ✅ Filtro por profesional (admin/gerente)
+- ✅ Filtro por sucursal
+- ✅ Filtro por estado (pendiente, confirmada, completada, etc.)
+- ✅ Filtro por servicio
+- ✅ Aplicación en tiempo real sin recargar
+
+##### Permisos por Rol
+- ✅ **Profesional**: Solo su propio calendario
+- ✅ **Gerente**: Calendarios de profesionales de su(s) sucursal(es)
+- ✅ **Admin/Super Admin**: Todos los calendarios
+- ✅ **Cliente**: Sin acceso
+
+#### Integración con Fases Anteriores
+
+##### Fase 1 (Horarios)
+- ✅ Usa `scheduleManager.ts` para obtener horarios
+- ✅ Respeta `ProfessionalSchedule` (dayOfWeek, startTime, endTime)
+- ✅ Procesa `ScheduleException` para bloquear fechas
+- ✅ Calcula disponibilidad basada en configuración
+
+##### Fase 2 (Asignaciones)
+- ✅ Considera `branchAssignments` con sucursal primaria
+- ✅ Aplica `scheduleOverride` cuando está definido
+- ✅ Filtra por sucursal en queries
+- ✅ Valida permisos de gerente según sucursales
+
+##### Fase 3 (Reportes)
+- ✅ Estadísticas del calendario complementan reportes
+- ✅ `CalendarStatistics` incluye métricas de utilización
+- ✅ Datos alimentan dashboards de análisis
+
+#### Características Técnicas
+- 🔒 Validaciones robustas en backend y frontend
+- 🚀 Rendimiento optimizado con lazy loading
+- 📱 Responsive design con TailwindCSS
+- 🌐 Localización completa en español
+- ♿ Accesibilidad con ARIA labels
+- 🎨 UI/UX intuitiva y profesional
+- 📊 Estadísticas de utilización
+- 🔔 Toast notifications para feedback
+- ⚡ Actualizaciones en tiempo real
+
+### Documentation
+- `FASE4_CALENDAR.md` - Documentación completa de la Fase 4 (50+ páginas)
+  - Arquitectura detallada
+  - API Endpoints con ejemplos
+  - Componentes Frontend
+  - Guías de uso para cada rol
+  - Testing manual checklist
+  - Integración con fases anteriores
+  - Próximos pasos
+
+### Statistics
+- 17 archivos nuevos/modificados
+- ~3,000 líneas de código
+- 4 componentes React principales
+- 8 endpoints API
+- 30+ tipos TypeScript
+- 10+ métodos de servicio
+- Sin breaking changes
+- 100% compatible con fases anteriores
+
+### Breaking Changes
+- ❌ **Ninguno** - Completamente compatible con v1.7.0
+
+### Notes
+- Sistema de calendario completamente funcional
+- Drag & drop con validaciones en tiempo real
+- Integración perfecta con horarios y asignaciones
+- Permisos estrictos según rol
+- Código limpio, comentado y mantenible
+- Listo para producción
+
 ## [1.7.0] - 2025-10-14
 
 ### Added - Fase 3: Sistema de Reportes
