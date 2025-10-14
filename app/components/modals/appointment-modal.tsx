@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Calendar, Clock, Save, X } from 'lucide-react'
+import { Calendar, Clock, Save, X, Search, User } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-hot-toast'
 
@@ -29,9 +29,14 @@ interface AppointmentModalProps {
 export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess }: AppointmentModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [clients, setClients] = useState<any[]>([])
+  const [filteredClients, setFilteredClients] = useState<any[]>([])
   const [services, setServices] = useState<any[]>([])
   const [professionals, setProfessionals] = useState<any[]>([])
   const [branches, setBranches] = useState<any[]>([])
+  const [clientSearchTerm, setClientSearchTerm] = useState('')
+  const [showClientDropdown, setShowClientDropdown] = useState(false)
+  const [selectedClientDisplay, setSelectedClientDisplay] = useState('')
+  const clientSearchRef = useRef<HTMLDivElement>(null)
   
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm({
     defaultValues: {
@@ -45,6 +50,34 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
       status: 'PENDING'
     }
   })
+
+  // Click outside handler for client dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (clientSearchRef.current && !clientSearchRef.current.contains(event.target as Node)) {
+        setShowClientDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Filter clients based on search term
+  useEffect(() => {
+    if (!clientSearchTerm.trim()) {
+      setFilteredClients(clients)
+      return
+    }
+
+    const term = clientSearchTerm.toLowerCase()
+    const filtered = clients.filter(client => 
+      `${client.firstName} ${client.lastName}`.toLowerCase().includes(term) ||
+      client.email?.toLowerCase().includes(term) ||
+      client.phone?.toLowerCase().includes(term)
+    )
+    setFilteredClients(filtered)
+  }, [clientSearchTerm, clients])
 
   // Reset form when appointment changes or modal opens/closes
   useEffect(() => {
@@ -60,6 +93,11 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
           notes: appointment.notes || '',
           status: appointment.status || 'PENDING'
         })
+        
+        // Set client display name for edit mode
+        if (appointment.client) {
+          setSelectedClientDisplay(`${appointment.client.firstName} ${appointment.client.lastName}`)
+        }
       } else {
         reset({
           clientId: '',
@@ -71,6 +109,8 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
           notes: '',
           status: 'PENDING'
         })
+        setSelectedClientDisplay('')
+        setClientSearchTerm('')
       }
       loadData()
     }
@@ -81,8 +121,8 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
       const [clientsRes, servicesRes, professionalsRes, branchesRes] = await Promise.all([
         fetch('/api/clients'),
         fetch('/api/services'),
-        fetch('/api/users?role=PROFESSIONAL'),
-        fetch('/api/admin/branches'),
+        fetch('/api/professionals'),
+        fetch('/api/branches'),
       ])
 
       // Verificar respuestas HTTP
@@ -149,6 +189,20 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
     } catch (error) {
       console.error('❌ Error crítico al cargar datos:', error)
       toast.error('Error al cargar datos del formulario')
+    }
+  }
+
+  const handleClientSelect = (client: any) => {
+    setValue('clientId', client.id)
+    setSelectedClientDisplay(`${client.firstName} ${client.lastName}`)
+    setClientSearchTerm('')
+    setShowClientDropdown(false)
+  }
+
+  const handleClientSearchFocus = () => {
+    setShowClientDropdown(true)
+    if (!clientSearchTerm) {
+      setFilteredClients(clients)
     }
   }
 
@@ -253,24 +307,58 @@ export function AppointmentModal({ isOpen, onClose, appointment, mode, onSuccess
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="clientId">Cliente *</Label>
-              <Select value={watch('clientId')} onValueChange={(value) => setValue('clientId', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.length === 0 ? (
-                    <SelectItem value="no-clients" disabled>No hay clientes disponibles</SelectItem>
+            {/* Client Search with Autocomplete */}
+            <div className="space-y-2 relative" ref={clientSearchRef}>
+              <Label htmlFor="clientSearch">
+                Cliente * {selectedClientDisplay && <span className="text-green-600 text-sm">✓ {selectedClientDisplay}</span>}
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="clientSearch"
+                  type="text"
+                  placeholder="Buscar cliente por nombre, email o teléfono..."
+                  value={clientSearchTerm}
+                  onChange={(e) => setClientSearchTerm(e.target.value)}
+                  onFocus={handleClientSearchFocus}
+                  className="pl-10"
+                />
+              </div>
+              
+              {showClientDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {filteredClients.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <User className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">No se encontraron clientes</p>
+                    </div>
                   ) : (
-                    clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.firstName} {client.lastName} - {client.phone}
-                      </SelectItem>
+                    filteredClients.map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => handleClientSelect(client)}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <User className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
+                              {client.firstName} {client.lastName}
+                            </p>
+                            <p className="text-sm text-gray-500 truncate">
+                              {client.email || client.phone || 'Sin contacto'}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
                     ))
                   )}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
+              
               {errors.clientId && <p className="text-sm text-red-500">Cliente es requerido</p>}
             </div>
 
