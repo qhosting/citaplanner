@@ -5,6 +5,7 @@ import { Session } from 'next-auth'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { useSystemVersion } from '@/lib/hooks/useSystemVersion'
 import { 
   CalendarDays, 
   Home, 
@@ -43,6 +44,7 @@ const navigation = [
 
 export function DashboardNav({ session }: DashboardNavProps) {
   const pathname = usePathname()
+  const { version, isLoading } = useSystemVersion()
 
   return (
     <nav className="fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg border-r border-gray-200 pt-16 hidden lg:block">
@@ -92,11 +94,23 @@ export function DashboardNav({ session }: DashboardNavProps) {
           })}
         </div>
 
-        {/* Footer - versión dinámica mostrada en esquina inferior derecha */}
+        {/* Footer - versión dinámica */}
         <div className="p-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
-            CitaPlanner Pro
-          </p>
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-xs font-semibold text-gray-700">
+              CitaPlanner Pro
+            </p>
+            {!isLoading && version && (
+              <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+                v{version}
+              </span>
+            )}
+            {isLoading && (
+              <span className="text-xs text-gray-400 animate-pulse">
+                Cargando versión...
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </nav>
