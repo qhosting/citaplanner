@@ -272,7 +272,7 @@ export class NotificationService {
           appointment: {
             select: {
               id: true,
-              scheduledAt: true,
+              startTime: true,
             }
           },
           user: {
