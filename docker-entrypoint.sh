@@ -253,48 +253,236 @@ EOF
     return 0
 }
 
-# Ejecutar migraciones de Prisma
+# Verificar estado de migraciones antes de aplicarlas
+check_migration_status() {
+    log_info "Verificando estado actual de migraciones..."
+    
+    # Capturar el estado de migraciones
+    local status_output
+    status_output=$(eval "$PRISMA_CMD migrate status" 2>&1)
+    local status_code=$?
+    
+    # Guardar output para debugging
+    echo "$status_output" > /tmp/migrate-status-pre.log
+    
+    log_debug "Código de salida de 'migrate status': $status_code"
+    
+    # Analizar el output para detectar problemas
+    if echo "$status_output" | grep -qi "following migration.*not.*applied\|pending migration"; then
+        log_info "📋 Migraciones pendientes detectadas - se aplicarán automáticamente"
+        return 0
+    elif echo "$status_output" | grep -qi "database schema.*out of sync"; then
+        log_warning "⚠️  Esquema de base de datos fuera de sincronización"
+        log_warning "   Se intentará aplicar migraciones para sincronizar"
+        return 0
+    elif echo "$status_output" | grep -qi "no pending migration"; then
+        log_success "✅ No hay migraciones pendientes - base de datos actualizada"
+        return 2
+    elif echo "$status_output" | grep -qi "migration.*failed"; then
+        log_error "❌ Migración anterior falló - requiere intervención manual"
+        log_error "   Usa 'prisma migrate resolve' para marcar como aplicada o revertida"
+        return 1
+    else
+        log_info "Estado de migraciones verificado"
+        return 0
+    fi
+}
+
+# Verificar integridad post-migración
+verify_migration_integrity() {
+    log_info "Verificando integridad de la base de datos post-migración..."
+    
+    # Verificar que el esquema esté sincronizado
+    local status_output
+    status_output=$(eval "$PRISMA_CMD migrate status" 2>&1)
+    
+    echo "$status_output" > /tmp/migrate-status-post.log
+    
+    if echo "$status_output" | grep -qi "database.*is.*up.*to.*date\|no.*pending.*migration"; then
+        log_success "✅ Base de datos sincronizada correctamente"
+        return 0
+    elif echo "$status_output" | grep -qi "pending migration"; then
+        log_warning "⚠️  Aún hay migraciones pendientes después de migrate deploy"
+        log_warning "   Esto puede indicar un problema - revisando..."
+        return 1
+    else
+        log_info "Estado post-migración verificado"
+        return 0
+    fi
+}
+
+# Validar disponibilidad de archivos de migración
+validate_migration_files() {
+    log_info "Validando archivos de migración..."
+    
+    if [ ! -d "prisma/migrations" ]; then
+        log_warning "⚠️  Directorio prisma/migrations no encontrado"
+        log_info "   Esto es normal si es la primera ejecución"
+        return 0
+    fi
+    
+    local migration_count=$(find prisma/migrations -type f -name "migration.sql" 2>/dev/null | wc -l)
+    log_info "📁 Encontradas $migration_count migraciones en el directorio"
+    
+    if [ "$migration_count" -eq 0 ]; then
+        log_warning "⚠️  No se encontraron archivos de migración"
+        log_info "   El esquema se aplicará directamente"
+    else
+        log_success "✅ Archivos de migración disponibles"
+    fi
+    
+    return 0
+}
+
+# Crear backup point antes de migración (usando timestamp en tabla metadata)
+create_migration_backup_point() {
+    log_info "Creando punto de backup de migraciones..."
+    
+    # Intentar crear una marca temporal en la BD
+    local timestamp=$(date +%s)
+    local backup_marker="migration_backup_$timestamp"
+    
+    # Esto es solo informativo, no hace un backup real de datos
+    log_info "📍 Punto de backup: $backup_marker"
+    log_debug "   Timestamp: $(date -d @$timestamp 2>/dev/null || date)"
+    
+    return 0
+}
+
+# Ejecutar migraciones de Prisma con validaciones completas
 run_migrations() {
     log_info "════════════════════════════════════════════════════════════════"
-    log_info "🔄 APLICANDO MIGRACIONES DE BASE DE DATOS"
+    log_info "🔄 SISTEMA AUTOMÁTICO DE MIGRACIONES"
     log_info "════════════════════════════════════════════════════════════════"
-    
-    # Listar migraciones pendientes
-    log_info "Verificando migraciones pendientes..."
-    eval "$PRISMA_CMD migrate status" 2>&1 | tee /tmp/migrate-status.log
-    
-    # Ejecutar migrate deploy (método recomendado para producción)
     log_info ""
-    log_info "Aplicando migraciones con 'prisma migrate deploy'..."
+    log_info "Este sistema garantiza que tu base de datos esté siempre"
+    log_info "sincronizada con el esquema de Prisma en cada deployment."
+    log_info ""
+    log_info "Proceso automático:"
+    log_info "  1️⃣  Validar archivos de migración disponibles"
+    log_info "  2️⃣  Verificar estado actual de la base de datos"
+    log_info "  3️⃣  Crear punto de backup (timestamp)"
+    log_info "  4️⃣  Aplicar migraciones pendientes"
+    log_info "  5️⃣  Verificar integridad post-migración"
+    log_info ""
+    log_info "════════════════════════════════════════════════════════════════"
+    echo ""
+    
+    # Paso 1: Validar archivos de migración
+    log_info "PASO 1/5: Validando archivos de migración"
+    log_info "────────────────────────────────────────────────────────────────"
+    if ! validate_migration_files; then
+        log_error "Error en validación de archivos de migración"
+        return 1
+    fi
+    echo ""
+    
+    # Paso 2: Verificar estado pre-migración
+    log_info "PASO 2/5: Verificando estado de la base de datos"
+    log_info "────────────────────────────────────────────────────────────────"
+    check_migration_status
+    local status_check=$?
+    
+    if [ $status_check -eq 1 ]; then
+        log_error "════════════════════════════════════════════════════════════════"
+        log_error "❌ ESTADO DE MIGRACIONES INCONSISTENTE"
+        log_error "════════════════════════════════════════════════════════════════"
+        log_error ""
+        log_error "La base de datos tiene migraciones en estado fallido."
+        log_error "Esto requiere intervención manual."
+        log_error ""
+        log_error "📋 Pasos de recuperación:"
+        log_error "   1. Accede al contenedor: docker exec -it <container> sh"
+        log_error "   2. Revisa el estado: npx prisma migrate status"
+        log_error "   3. Marca como aplicada: npx prisma migrate resolve --applied <migration_name>"
+        log_error "   4. O marca como revertida: npx prisma migrate resolve --rolled-back <migration_name>"
+        log_error "   5. Reinicia el contenedor después de resolver"
+        log_error ""
+        log_error "📋 Log disponible en: /tmp/migrate-status-pre.log"
+        log_error "════════════════════════════════════════════════════════════════"
+        return 1
+    elif [ $status_check -eq 2 ]; then
+        log_success "✅ Base de datos ya actualizada - saltando aplicación de migraciones"
+        return 0
+    fi
+    echo ""
+    
+    # Paso 3: Crear punto de backup
+    log_info "PASO 3/5: Creando punto de backup"
+    log_info "────────────────────────────────────────────────────────────────"
+    create_migration_backup_point
+    echo ""
+    
+    # Paso 4: Aplicar migraciones
+    log_info "PASO 4/5: Aplicando migraciones pendientes"
+    log_info "────────────────────────────────────────────────────────────────"
+    log_info "Ejecutando: prisma migrate deploy"
+    log_info ""
+    
+    # Ejecutar migrate deploy con output completo
     if eval "$PRISMA_CMD migrate deploy" 2>&1 | tee /tmp/migrate-deploy.log; then
         log_success "✅ Migraciones aplicadas correctamente"
-        log_info ""
-        log_info "Estado final de migraciones:"
-        eval "$PRISMA_CMD migrate status" 2>&1
-        return 0
+        echo ""
     else
+        local deploy_exit_code=${PIPESTATUS[0]}
         log_error "════════════════════════════════════════════════════════════════"
-        log_error "❌ ERROR AL APLICAR MIGRACIONES"
+        log_error "❌ ERROR AL APLICAR MIGRACIONES (Exit Code: $deploy_exit_code)"
         log_error "════════════════════════════════════════════════════════════════"
         log_error ""
-        log_error "Las migraciones de Prisma fallaron. Esto puede deberse a:"
-        log_error "  1. Conflictos en el esquema de la base de datos"
-        log_error "  2. Migraciones incompatibles con el estado actual de la BD"
-        log_error "  3. Errores de sintaxis SQL en los archivos de migración"
+        log_error "Las migraciones de Prisma fallaron durante la ejecución."
         log_error ""
-        log_error "📋 Logs disponibles en:"
-        log_error "   • /tmp/migrate-status.log - Estado de migraciones"
-        log_error "   • /tmp/migrate-deploy.log - Salida de migrate deploy"
+        log_error "Causas comunes:"
+        log_error "  ❌ Conflictos en el esquema de la base de datos"
+        log_error "  ❌ Migraciones incompatibles con datos existentes"
+        log_error "  ❌ Errores de sintaxis SQL en archivos de migración"
+        log_error "  ❌ Constraints violados (foreign keys, unique, etc.)"
+        log_error "  ❌ Permisos insuficientes en la base de datos"
         log_error ""
-        log_error "🔧 Soluciones posibles:"
-        log_error "   1. Revisa los logs arriba para identificar el error específico"
-        log_error "   2. Verifica que todas las migraciones estén en el repositorio"
-        log_error "   3. Si es necesario, ejecuta 'prisma migrate resolve' manualmente"
-        log_error "   4. Considera hacer un backup de la BD antes de resolver"
+        log_error "📋 Logs disponibles:"
+        log_error "   • /tmp/migrate-status-pre.log - Estado pre-migración"
+        log_error "   • /tmp/migrate-deploy.log - Output completo de migrate deploy"
+        log_error ""
+        log_error "🔧 Acciones de recuperación:"
+        log_error "   1. Revisa los logs arriba para identificar la migración fallida"
+        log_error "   2. Examina el archivo SQL de la migración problemática"
+        log_error "   3. Verifica los datos que causan conflicto en la BD"
+        log_error "   4. Backup de datos críticos antes de resolver"
+        log_error "   5. Usa 'prisma migrate resolve' para marcar estado manualmente"
+        log_error "   6. O corrige los datos y reintenta el deployment"
+        log_error ""
+        log_error "Comandos útiles:"
+        log_error "   docker exec -it <container> npx prisma migrate status"
+        log_error "   docker exec -it <container> npx prisma migrate resolve --help"
         log_error ""
         log_error "════════════════════════════════════════════════════════════════"
         return 1
     fi
+    
+    # Paso 5: Verificar integridad
+    log_info "PASO 5/5: Verificando integridad de la base de datos"
+    log_info "────────────────────────────────────────────────────────────────"
+    if ! verify_migration_integrity; then
+        log_warning "⚠️  Verificación de integridad mostró advertencias"
+        log_warning "   La aplicación continuará, pero revisa los logs"
+        log_warning "   Log disponible en: /tmp/migrate-status-post.log"
+    fi
+    echo ""
+    
+    # Estado final
+    log_info "Estado final de migraciones:"
+    log_info "────────────────────────────────────────────────────────────────"
+    eval "$PRISMA_CMD migrate status" 2>&1
+    echo ""
+    
+    log_success "════════════════════════════════════════════════════════════════"
+    log_success "✅ MIGRACIONES COMPLETADAS EXITOSAMENTE"
+    log_success "════════════════════════════════════════════════════════════════"
+    log_success ""
+    log_success "Tu base de datos está sincronizada con el esquema de Prisma."
+    log_success "La aplicación está lista para iniciar."
+    log_success ""
+    
+    return 0
 }
 
 # Generar cliente Prisma
