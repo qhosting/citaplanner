@@ -22,7 +22,8 @@ import {
   Search,
   Filter,
   ChevronRight,
-  Users
+  Users,
+  RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -68,10 +69,30 @@ export default function WorkingHoursPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [showInactive, setShowInactive] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   // Cargar datos iniciales
   useEffect(() => {
     fetchData();
+  }, [showInactive]);
+
+  // Auto-refresh cuando la página vuelve a estar visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // También refrescar cuando la ventana recibe el foco
+    window.addEventListener('focus', fetchData);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', fetchData);
+    };
   }, [showInactive]);
 
   // Filtrar profesionales
@@ -98,6 +119,9 @@ export default function WorkingHoursPage() {
         setBranches(branchData.branches || []);
       }
 
+      // Actualizar timestamp de última actualización
+      setLastUpdate(new Date());
+      
     } catch (error) {
       console.error('Error al cargar datos:', error);
       toast.error('Error al cargar los datos');
@@ -182,6 +206,19 @@ export default function WorkingHoursPage() {
                 Configura los horarios de trabajo de cada profesional
               </p>
             </div>
+            
+            {/* Botón de refresh */}
+            <button
+              onClick={() => {
+                fetchData();
+                toast.success('Actualizando datos...');
+              }}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Actualizar</span>
+            </button>
           </div>
 
           {/* Estadísticas rápidas */}
@@ -397,6 +434,12 @@ export default function WorkingHoursPage() {
           <p>
             Mostrando {filteredProfessionals.length} de {professionals.length} profesionales
           </p>
+          {lastUpdate && (
+            <p className="mt-2 flex items-center justify-center gap-2">
+              <Clock className="w-4 h-4" />
+              Última actualización: {lastUpdate.toLocaleTimeString('es-ES')}
+            </p>
+          )}
         </div>
       </div>
     </div>
