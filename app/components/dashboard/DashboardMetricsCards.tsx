@@ -2,7 +2,7 @@
  * DashboardMetricsCards Component
  * 
  * Componente que muestra tarjetas de métricas del dashboard
- * NOTA: Actualmente usa datos mock. En Fase 5 se integrará con /api/dashboard/metrics
+ * Sprint 1 - Fase 6: Integración con métricas reales
  */
 
 'use client';
@@ -21,6 +21,7 @@ import {
   Calendar,
   CreditCard
 } from 'lucide-react';
+import { DashboardMetrics } from '@/app/types/dashboard';
 
 interface MetricCardProps {
   title: string;
@@ -69,23 +70,12 @@ const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
-export default function DashboardMetricsCards() {
-  // TODO: En Fase 5, estos datos vendrán del endpoint /api/dashboard/metrics
-  // Por ahora usamos datos mock para la demostración
-  const mockMetrics = {
-    todayAppointments: 12,
-    completedAppointments: 8,
-    pendingAppointments: 4,
-    cancelledAppointments: 1,
-    todayRevenue: 4500,
-    weeklyRevenue: 28500,
-    monthlyRevenue: 125000,
-    newClientsThisMonth: 24,
-    totalClients: 342,
-    activeProfessionals: 8,
-    averageServicePrice: 850,
-    completionRate: 85
-  };
+interface DashboardMetricsCardsProps {
+  /** Métricas del dashboard desde la API */
+  metrics: DashboardMetrics;
+}
+
+export default function DashboardMetricsCards({ metrics }: DashboardMetricsCardsProps) {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -98,16 +88,15 @@ export default function DashboardMetricsCards() {
   const metricsData: MetricCardProps[] = [
     {
       title: 'Citas Hoy',
-      value: mockMetrics.todayAppointments,
+      value: metrics.appointments.today,
       icon: CalendarDays,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      description: 'Agendadas para hoy',
-      trend: '+2 vs ayer'
+      description: 'Agendadas para hoy'
     },
     {
       title: 'Citas Completadas',
-      value: mockMetrics.completedAppointments,
+      value: metrics.appointments.completed,
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -115,7 +104,7 @@ export default function DashboardMetricsCards() {
     },
     {
       title: 'Citas Pendientes',
-      value: mockMetrics.pendingAppointments,
+      value: metrics.appointments.pending,
       icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
@@ -123,34 +112,31 @@ export default function DashboardMetricsCards() {
     },
     {
       title: 'Ingresos Hoy',
-      value: formatCurrency(mockMetrics.todayRevenue),
+      value: formatCurrency(metrics.revenue.today),
       icon: DollarSign,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
-      description: 'Facturado hoy',
-      trend: '+12% vs ayer'
+      description: 'Facturado hoy'
     },
     {
       title: 'Ingresos Semanales',
-      value: formatCurrency(mockMetrics.weeklyRevenue),
+      value: formatCurrency(metrics.revenue.weekly),
       icon: TrendingUp,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      description: 'Esta semana',
-      trend: '+8% vs semana anterior'
+      description: 'Esta semana'
     },
     {
       title: 'Ingresos Mensuales',
-      value: formatCurrency(mockMetrics.monthlyRevenue),
+      value: formatCurrency(metrics.revenue.monthly),
       icon: DollarSign,
       color: 'text-teal-600',
       bgColor: 'bg-teal-50',
-      description: 'Este mes',
-      trend: '+15% vs mes anterior'
+      description: 'Este mes'
     },
     {
       title: 'Nuevos Clientes',
-      value: mockMetrics.newClientsThisMonth,
+      value: metrics.clients.newThisMonth,
       icon: Users,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -158,7 +144,7 @@ export default function DashboardMetricsCards() {
     },
     {
       title: 'Total Clientes',
-      value: mockMetrics.totalClients,
+      value: metrics.clients.total,
       icon: Users,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
@@ -166,7 +152,7 @@ export default function DashboardMetricsCards() {
     },
     {
       title: 'Profesionales Activos',
-      value: mockMetrics.activeProfessionals,
+      value: metrics.professionals.active,
       icon: UserCheck,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -174,7 +160,7 @@ export default function DashboardMetricsCards() {
     },
     {
       title: 'Precio Promedio',
-      value: formatCurrency(mockMetrics.averageServicePrice),
+      value: formatCurrency(metrics.metrics.averageServicePrice),
       icon: CreditCard,
       color: 'text-teal-600',
       bgColor: 'bg-teal-50',
@@ -182,7 +168,7 @@ export default function DashboardMetricsCards() {
     },
     {
       title: 'Tasa de Completado',
-      value: `${mockMetrics.completionRate}%`,
+      value: `${metrics.metrics.completionRate}%`,
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -190,7 +176,7 @@ export default function DashboardMetricsCards() {
     },
     {
       title: 'Cancelaciones',
-      value: mockMetrics.cancelledAppointments,
+      value: metrics.appointments.cancelled,
       icon: AlertCircle,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
