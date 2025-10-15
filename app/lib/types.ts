@@ -1,5 +1,5 @@
 
-import { UserRole, AppointmentStatus, PaymentMethod, PaymentStatus } from '@prisma/client'
+import { UserRole, AppointmentStatus, PaymentMethod, PaymentStatus, CommissionStatus } from '@prisma/client'
 
 export interface User {
   id: string
@@ -118,4 +118,40 @@ export interface DashboardMetrics {
   pendingAppointments: number
   totalClients: number
   averageServicePrice: number
+}
+
+// Commission Types
+export interface Commission {
+  id: string
+  period: string
+  totalSales: number
+  totalCommissions: number
+  status: CommissionStatus
+  paidDate?: Date
+  notes?: string
+  tenantId: string
+  professionalId: string
+  professional?: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    phone?: string
+  }
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CommissionSummary {
+  totalPending: number
+  totalPaid: number
+  totalSales: number
+  byPeriod: Commission[]
+}
+
+export interface CommissionStats {
+  totalPending: number
+  totalPaid: number
+  totalSales: number
+  count: number
 }
