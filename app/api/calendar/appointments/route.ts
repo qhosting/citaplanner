@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { CalendarManager } from '@/app/lib/services/calendarManager';
 import { PrismaClient } from '@prisma/client';
+import { notifyAppointmentCreated } from '@/app/lib/services/whatsappNotificationHelper';
 
 const prisma = new PrismaClient();
 
@@ -97,6 +98,9 @@ export async function POST(request: NextRequest) {
         branch: true,
       },
     });
+
+    // Send WhatsApp notification (non-blocking)
+    notifyAppointmentCreated(appointment.id);
 
     return NextResponse.json({
       success: true,

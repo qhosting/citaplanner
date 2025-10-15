@@ -189,6 +189,10 @@ model Tenant {
   
   // Fase 2: Asignaciones de profesionales a sucursales
   branchAssignments       BranchAssignment[]
+  
+  // Sprint 2: WhatsApp Integration
+  whatsappConfigs         WhatsAppConfig[]
+  messageTemplates        MessageTemplate[]
 
   @@map("tenants")
 }
@@ -216,6 +220,10 @@ model Branch {
   
   // Fase 2: Asignaciones de profesionales
   professionalAssignments BranchAssignment[] @relation("BranchAssignments")
+  
+  // Sprint 2: WhatsApp Integration
+  whatsappConfigs         WhatsAppConfig[]
+  messageTemplates        MessageTemplate[]
 
   @@map("branches")
 }
@@ -411,6 +419,10 @@ model Appointment {
   externalEtag         String?
   lastModifiedSource   String?
   icloudSyncEnabled    Boolean                     @default(false)
+  
+  // Sprint 2: WhatsApp Integration
+  whatsappLogs     WhatsAppLog[]
+  reminderLogs     ReminderLog[]
 
   @@map("appointments")
 }
@@ -1050,4 +1062,145 @@ model BranchAssignment {
   @@index([isActive])
   @@index([isPrimary])
   @@map("branch_assignments")
+}
+
+// ============================================
+// SPRINT 2: WHATSAPP INTEGRATION (Evolution API)
+// ============================================
+
+// Enums for WhatsApp module
+enum MessageTemplateType {
+  APPOINTMENT_CREATED
+  APPOINTMENT_UPDATED
+  APPOINTMENT_CANCELLED
+  REMINDER_24H
+  REMINDER_1H
+  CUSTOM
+}
+
+enum WhatsAppLogStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+enum ReminderType {
+  HOURS_24
+  HOURS_1
+  CUSTOM
+}
+
+// WhatsApp Configuration (per branch or global)
+model WhatsAppConfig {
+  id           String  @id @default(cuid())
+  apiUrl       String // Evolution API URL
+  apiKey       String  @db.Text // Encrypted API Key
+  instanceName String // WhatsApp instance name
+  phoneNumber  String // WhatsApp Business number
+  isActive     Boolean @default(true)
+  isDefault    Boolean @default(false) // Default config for tenant
+  
+  // Configuration options
+  sendOnCreate    Boolean @default(true)  // Send notification on appointment creation
+  sendOnUpdate    Boolean @default(true)  // Send notification on appointment update
+  sendOnCancel    Boolean @default(true)  // Send notification on appointment cancellation
+  sendReminder24h Boolean @default(true)  // Send 24h reminder
+  sendReminder1h  Boolean @default(true)  // Send 1h reminder
+  
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  branchId String? // Null means global configuration for tenant
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  whatsappLogs  WhatsAppLog[]
+  reminderLogs  ReminderLog[]
+  
+  @@unique([tenantId, branchId])
+  @@index([tenantId, isActive])
+  @@index([branchId])
+  @@map("whatsapp_configs")
+}
+
+// WhatsApp Message Log
+model WhatsAppLog {
+  id         String             @id @default(cuid())
+  configId   String
+  config     WhatsAppConfig     @relation(fields: [configId], references: [id], onDelete: Cascade)
+  
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  
+  messageType String // "appointment_created", "appointment_updated", etc.
+  recipient   String // Phone number
+  message     String  @db.Text
+  status      WhatsAppLogStatus @default(PENDING)
+  response    String? @db.Text // API response
+  error       String? @db.Text // Error message if failed
+  
+  sentAt DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([configId])
+  @@index([appointmentId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("whatsapp_logs")
+}
+
+// Message Templates
+model MessageTemplate {
+  id        String              @id @default(cuid())
+  name      String
+  type      MessageTemplateType
+  content   String              @db.Text // Template with variables: {cliente}, {fecha}, {hora}, {profesional}, {sucursal}, etc.
+  variables Json? // Array of variable names
+  isActive  Boolean             @default(true)
+  isDefault Boolean             @default(false) // Default template for this type
+  
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  branchId String? // Null means global template for tenant
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([tenantId, type])
+  @@index([branchId])
+  @@index([isActive])
+  @@map("message_templates")
+}
+
+// Reminder Log
+model ReminderLog {
+  id           String        @id @default(cuid())
+  configId     String
+  config       WhatsAppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  
+  reminderType ReminderType
+  sentAt       DateTime
+  status       WhatsAppLogStatus @default(SENT)
+  response     String?       @db.Text
+  error        String?       @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([configId])
+  @@index([appointmentId])
+  @@index([sentAt])
+  @@map("reminder_logs")
 }

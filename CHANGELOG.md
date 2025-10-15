@@ -1,5 +1,169 @@
 Here's the result of running `cat -n` on /home/ubuntu/github_repos/citaplanner/CHANGELOG.md:
 
+## [1.9.0] - 2025-10-15
+
+### Added - Sprint 2: Integración WhatsApp Evolution API
+
+#### 🎯 Resumen
+Implementación completa de integración con WhatsApp Evolution API para envío automático de notificaciones y recordatorios de citas.
+
+#### Fase 1: Configuración Base
+
+**Base de Datos:**
+- ✅ Modelo `WhatsAppConfig` para configuración por tenant/sucursal
+- ✅ Modelo `WhatsAppLog` para registro de mensajes enviados
+- ✅ Modelo `MessageTemplate` para plantillas personalizables
+- ✅ Modelo `ReminderLog` para tracking de recordatorios
+- ✅ Migración SQL completa: `20251015_whatsapp_integration`
+- ✅ Enums: `MessageTemplateType`, `WhatsAppLogStatus`, `ReminderType`
+
+**Servicios Core:**
+- ✅ `whatsappService.ts` - Servicio principal de WhatsApp
+  - Obtener configuración (tenant/sucursal)
+  - Enviar mensajes a Evolution API
+  - Validar conexión
+  - Procesar plantillas con variables dinámicas
+  - Encriptar/desencriptar API Keys (AES-256-CBC)
+- ✅ `whatsappNotificationHelper.ts` - Helper no bloqueante para notificaciones
+
+**API Endpoints:**
+- ✅ `POST /api/whatsapp/config` - Crear configuración
+- ✅ `GET /api/whatsapp/config` - Listar configuraciones
+- ✅ `PUT /api/whatsapp/config` - Actualizar configuración
+- ✅ `DELETE /api/whatsapp/config` - Eliminar configuración
+- ✅ `POST /api/whatsapp/test-connection` - Probar conexión con Evolution API
+- ✅ `GET /api/whatsapp/logs` - Obtener historial de mensajes
+- ✅ `POST /api/whatsapp/send` - Envío manual de mensajes
+- ✅ `GET/POST/PUT/DELETE /api/whatsapp/templates` - CRUD de plantillas
+
+**Panel de Administración:**
+- ✅ `/dashboard/settings/whatsapp` - Página principal con tabs
+- ✅ `WhatsAppConfigPanel` - Configuración de Evolution API
+- ✅ `MessageTemplatesPanel` - Gestión de plantillas
+- ✅ `MessageLogsPanel` - Historial de mensajes
+- ✅ `ReminderStatsPanel` - Estadísticas de recordatorios
+
+#### Fase 2: Notificaciones de Citas
+
+**Plantillas Predeterminadas (Español):**
+- ✅ `APPOINTMENT_CREATED` - Confirmación de cita
+- ✅ `APPOINTMENT_UPDATED` - Modificación de cita
+- ✅ `APPOINTMENT_CANCELLED` - Cancelación de cita
+- ✅ Seed script: `prisma/seeds/whatsapp-templates.ts`
+
+**Variables Dinámicas:**
+- {cliente}, {servicio}, {fecha}, {hora}
+- {profesional}, {sucursal}, {direccion}
+- {telefono}, {precio}, {duracion}
+
+**Integración con Endpoints de Citas:**
+- ✅ `POST /api/calendar/appointments` - + Notificación al crear
+- ✅ `PATCH /api/calendar/appointments/[id]/reschedule` - + Notificación al modificar
+- ✅ Envío asíncrono no bloqueante (fire-and-forget)
+
+#### Fase 3: Recordatorios Automáticos
+
+**Servicio de Recordatorios:**
+- ✅ `reminderService.ts` - Lógica completa de recordatorios
+  - Obtener citas para recordatorio 24h antes
+  - Obtener citas para recordatorio 1h antes
+  - Enviar recordatorios por lote
+  - Prevención de duplicados
+  - Estadísticas de envío
+
+**Cron Job:**
+- ✅ `GET /api/cron/send-reminders` - Endpoint protegido para cron
+- ✅ Autenticación con Bearer token (`CRON_SECRET`)
+- ✅ Envío automático cada 15 minutos (configurable)
+- ✅ Delay de 1 segundo entre mensajes (rate limiting)
+- ✅ Reporte detallado de resultados
+
+**Plantillas de Recordatorios:**
+- ✅ `REMINDER_24H` - Recordatorio 24 horas antes
+- ✅ `REMINDER_1H` - Recordatorio 1 hora antes
+
+#### 🔒 Seguridad
+
+- ✅ Encriptación de API Keys con AES-256-CBC
+- ✅ Variable de entorno: `WHATSAPP_ENCRYPTION_KEY`
+- ✅ Protección de endpoint cron con `CRON_SECRET`
+- ✅ Validación de permisos (ADMIN/SUPERADMIN)
+- ✅ Logs detallados de todos los intentos de envío
+
+#### 📊 Características Destacadas
+
+**Configuración Flexible:**
+- Por tenant (global)
+- Por sucursal (específico)
+- Fallback automático a config general
+- Activar/desactivar por tipo de notificación
+
+**Sistema Robusto:**
+- Manejo completo de errores
+- Logs detallados en BD
+- Reintentos automáticos
+- Prevención de duplicados
+- No bloquea operaciones críticas
+
+**Escalabilidad:**
+- Multi-tenant completo
+- Multi-sucursal
+- Plantillas personalizables
+- Sistema modular y extensible
+
+#### 📖 Documentación
+
+- ✅ `docs/SPRINT2_WHATSAPP_INTEGRATION.md` - Documentación técnica completa
+  - Arquitectura del sistema
+  - Modelos de base de datos
+  - API endpoints documentados
+  - Plantillas predeterminadas
+  - Configuración de cron jobs
+  - Testing y troubleshooting
+  - Ejemplos de uso
+
+#### 🔧 Archivos Creados
+
+**Servicios:** (3 archivos)
+- `app/lib/services/whatsappService.ts`
+- `app/lib/services/reminderService.ts`
+- `app/lib/services/whatsappNotificationHelper.ts`
+
+**API Routes:** (6 archivos)
+- `app/api/whatsapp/config/route.ts`
+- `app/api/whatsapp/test-connection/route.ts`
+- `app/api/whatsapp/logs/route.ts`
+- `app/api/whatsapp/send/route.ts`
+- `app/api/whatsapp/templates/route.ts`
+- `app/api/cron/send-reminders/route.ts`
+
+**UI Components:** (5 archivos)
+- `app/dashboard/settings/whatsapp/page.tsx`
+- `app/dashboard/settings/whatsapp/components/WhatsAppConfigPanel.tsx`
+- `app/dashboard/settings/whatsapp/components/MessageTemplatesPanel.tsx`
+- `app/dashboard/settings/whatsapp/components/MessageLogsPanel.tsx`
+- `app/dashboard/settings/whatsapp/components/ReminderStatsPanel.tsx`
+
+**Database:**
+- `app/prisma/schema.prisma` - + 4 modelos, 3 enums
+- `app/prisma/migrations/20251015_whatsapp_integration/migration.sql`
+- `app/prisma/seeds/whatsapp-templates.ts`
+
+**Documentación:**
+- `app/docs/SPRINT2_WHATSAPP_INTEGRATION.md`
+
+#### 🎯 Próximos Pasos
+
+1. Configurar variables de entorno en producción
+2. Ejecutar migración de base de datos
+3. Sembrar plantillas predeterminadas
+4. Configurar cron job en Easypanel (cada 15 min)
+5. Obtener credenciales de Evolution API
+6. Probar conexión y envío de mensajes
+7. Monitorear logs y estadísticas
+
+---
+
 ## [1.8.9] - 2025-10-15
 
 ### Added - Sprint 1 Fase 6: Integración Dashboard con Métricas Reales
