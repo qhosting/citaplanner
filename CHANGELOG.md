@@ -1,5 +1,130 @@
 Here's the result of running `cat -n` on /home/ubuntu/github_repos/citaplanner/CHANGELOG.md:
 
+## [1.10.0] - 2025-10-15
+
+### Added - Sistema de Migraciones Automáticas
+
+#### 🎯 Resumen
+Sistema completo de migraciones automáticas de Prisma que garantiza sincronización de base de datos en cada deployment sin intervención manual.
+
+#### Características Principales
+
+**Sistema Automático de Migraciones:**
+- ✅ Ejecución automática de `prisma migrate deploy` en cada deployment
+- ✅ Validación pre-migración del estado de la base de datos
+- ✅ Validación post-migración de integridad
+- ✅ Detección inteligente de migraciones pendientes
+- ✅ Proceso 100% idempotente (seguro ejecutar múltiples veces)
+- ✅ Sin downtime durante migraciones
+
+**Validaciones y Manejo de Errores:**
+- ✅ `validate_migration_files()` - Validación de archivos de migración
+- ✅ `check_migration_status()` - Verificación de estado pre-migración
+- ✅ `verify_migration_integrity()` - Verificación post-migración
+- ✅ `create_migration_backup_point()` - Punto de backup con timestamp
+- ✅ Detección de migraciones fallidas con guía de recuperación
+- ✅ Detección de esquema desincronizado
+- ✅ Logs detallados en `/tmp/` para debugging
+
+**Mejoras en docker-entrypoint.sh:**
+- ✅ Función `run_migrations()` completamente reescrita con 5 pasos validados
+- ✅ Logs estructurados con información detallada de cada paso
+- ✅ Manejo robusto de errores con exit codes específicos
+- ✅ Mensajes de error descriptivos con comandos de recuperación
+- ✅ Skip automático si no hay migraciones pendientes
+
+**Scripts de NPM Agregados:**
+- ✅ `npm run migrate:deploy` - Aplicar migraciones manualmente
+- ✅ `npm run migrate:status` - Ver estado de migraciones
+- ✅ `npm run migrate:resolve` - Resolver migraciones fallidas
+- ✅ `npm run prisma:generate` - Regenerar cliente Prisma
+- ✅ `npm run db:push` - Push de schema (desarrollo)
+- ✅ `npm run db:studio` - Abrir Prisma Studio
+
+**Documentación:**
+- ✅ `MIGRACIONES_AUTOMATICAS.md` - Guía completa del sistema
+  - Visión general y arquitectura
+  - Flujo de ejecución detallado
+  - Logs y monitoreo
+  - Casos de uso comunes
+  - Troubleshooting completo
+  - Comandos útiles y FAQ
+
+#### Proceso de Migración (5 Pasos)
+
+**Paso 1: Validar Archivos de Migración**
+- Verifica existencia de `prisma/migrations/`
+- Cuenta migraciones disponibles
+- Valida integridad de archivos
+
+**Paso 2: Verificar Estado de Base de Datos**
+- Ejecuta `prisma migrate status`
+- Detecta migraciones pendientes
+- Identifica migraciones fallidas
+- Verifica sincronización de esquema
+
+**Paso 3: Crear Punto de Backup**
+- Genera timestamp de referencia
+- Marca temporal para troubleshooting
+
+**Paso 4: Aplicar Migraciones**
+- Ejecuta `prisma migrate deploy`
+- Captura output completo en `/tmp/migrate-deploy.log`
+- Maneja errores con mensajes descriptivos
+
+**Paso 5: Verificar Integridad**
+- Confirma sincronización post-migración
+- Valida estado final de base de datos
+- Genera logs de verificación
+
+#### Logs Generados
+
+| Archivo | Contenido |
+|---------|-----------|
+| `/tmp/migrate-status-pre.log` | Estado antes de aplicar migraciones |
+| `/tmp/migrate-deploy.log` | Output completo de migrate deploy |
+| `/tmp/migrate-status-post.log` | Estado post-migración |
+
+#### Casos de Uso Soportados
+
+1. **Deployment Normal**: Aplica migraciones pendientes automáticamente
+2. **Sin Cambios**: Detecta y salta si no hay migraciones pendientes
+3. **Múltiples Migraciones**: Aplica todas las migraciones acumuladas en orden
+4. **Migración Fallida**: Proporciona guía detallada de recuperación
+5. **Estado Inconsistente**: Detecta y requiere intervención manual con comandos específicos
+
+#### Mejores Prácticas
+
+- ✅ Proceso automático, sin configuración adicional requerida
+- ✅ Logs visibles en Easypanel para monitoreo
+- ✅ Backup automático de volumen PostgreSQL en Easypanel
+- ✅ Migraciones idempotentes y seguras
+- ✅ Sin impacto en tiempo de inicio si no hay migraciones
+
+#### Troubleshooting Incluido
+
+- ❌ **Migración Fallida**: Comandos de `prisma migrate resolve`
+- ❌ **Estado Inconsistente**: Pasos de recuperación detallados
+- ⚠️ **Advertencias de Integridad**: Guía de verificación
+- 📋 **Logs Detallados**: Acceso a todos los archivos de log
+
+#### Integración con Deployment
+
+- ✅ Se ejecuta automáticamente en inicio de contenedor Docker
+- ✅ Compatible con Easypanel deployment automático
+- ✅ Funciona con GitHub Actions CI/CD
+- ✅ Sin cambios requeridos en workflow de desarrollo
+
+### Breaking Changes
+- Ninguno - totalmente retrocompatible
+
+### Migration Notes
+- No se requieren migraciones adicionales
+- El sistema empieza a funcionar automáticamente en el próximo deployment
+- Migraciones existentes se mantienen sin cambios
+
+---
+
 ## [1.9.0] - 2025-10-15
 
 ### Added - Sprint 2: Integración WhatsApp Evolution API
