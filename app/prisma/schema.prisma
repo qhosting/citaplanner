@@ -277,6 +277,7 @@ model User {
   // Fase 2: Asignaciones a sucursales
   branchAssignments BranchAssignment[] @relation("ProfessionalAssignments")
 
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -374,6 +375,7 @@ model Client {
   sales Sale[]
 
   @@unique([phone, tenantId])
+  @@index([tenantId])
   @@map("clients")
 }
 
@@ -424,6 +426,8 @@ model Appointment {
   whatsappLogs     WhatsAppLog[]
   reminderLogs     ReminderLog[]
 
+  @@index([tenantId, userId, startTime, endTime])
+  @@index([tenantId, clientId, startTime, endTime])
   @@map("appointments")
 }
 
