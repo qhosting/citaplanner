@@ -193,6 +193,7 @@ model Tenant {
   // Sprint 2: WhatsApp Integration
   whatsappConfigs         WhatsAppConfig[]
   messageTemplates        MessageTemplate[]
+  chatwootConfigs         ChatwootConfig[]
 
   // Fase 5: Real-Time Notifications
   userNotificationPreferences UserNotificationPreferences[]
@@ -227,6 +228,7 @@ model Branch {
   // Sprint 2: WhatsApp Integration
   whatsappConfigs         WhatsAppConfig[]
   messageTemplates        MessageTemplate[]
+  chatwootConfigs         ChatwootConfig[]
 
   @@map("branches")
 }
@@ -1247,4 +1249,36 @@ model ReminderLog {
   @@index([appointmentId])
   @@index([sentAt])
   @@map("reminder_logs")
+}
+
+// ============================================================================
+// CHATWOOT INTEGRATION
+// ============================================================================
+
+// Chatwoot Configuration
+model ChatwootConfig {
+  id           String  @id @default(cuid())
+  websiteToken String  @db.Text // Chatwoot website token
+  baseUrl      String // Chatwoot installation URL
+  isActive     Boolean @default(true)
+  isDefault    Boolean @default(false) // Default config for tenant
+  
+  // Widget settings
+  position     String  @default("right") // "left" or "right"
+  locale       String  @default("es") // Language code
+  widgetColor  String? // Custom widget color
+  
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  branchId String? // Null means global configuration for tenant
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([isActive])
+  @@map("chatwoot_configs")
 }

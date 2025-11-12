@@ -1,5 +1,218 @@
 # Changelog
 
+## [1.11.1] - 2025-11-12
+
+### Added - Integración de Chatwoot Live Chat
+
+#### 🎯 Resumen
+Integración completa de Chatwoot, una plataforma de soporte y chat en vivo de código abierto, con soporte multi-tenant, identificación automática de usuarios y atributos personalizados.
+
+#### Características Principales
+
+**Componentes de Integración:**
+- ✅ `ChatwootWidget` - Widget de chat interactivo
+  - Carga dinámica del SDK de Chatwoot
+  - Identificación automática de usuarios autenticados
+  - Envío de atributos personalizados (tenantId, role, branchId)
+  - Configuración personalizable (posición, idioma, colores)
+  - Control programático del widget
+  - Soporte para usuarios anónimos
+- ✅ `ChatwootProvider` - Provider para el layout principal
+  - Carga configuración desde API
+  - Inicialización automática del widget
+  - Gestión de sesión y re-identificación
+
+**API REST:**
+- ✅ `/api/chatwoot/config` - Endpoints CRUD para configuraciones
+  - `GET` - Obtener configuración del tenant actual
+  - `POST` - Crear nueva configuración (solo ADMINs)
+  - `PUT` - Actualizar configuración existente
+  - `DELETE` - Eliminar configuración
+  - Validación de permisos (ADMIN/SUPERADMIN)
+  - Sanitización de URLs
+  - Validación de datos
+
+**Backend y Database:**
+- ✅ Modelo `ChatwootConfig` en Prisma
+  - `websiteToken` - Token del inbox de Chatwoot
+  - `baseUrl` - URL de la instancia de Chatwoot
+  - `isActive` - Estado habilitado/deshabilitado
+  - `isDefault` - Configuración por defecto del tenant
+  - `position` - Posición del widget (left/right)
+  - `locale` - Idioma del widget
+  - `widgetColor` - Color personalizado
+  - `tenantId` - Relación con tenant (CASCADE)
+  - `branchId` - Relación opcional con sucursal (CASCADE)
+- ✅ Migración Prisma `add_chatwoot_integration`
+  - Tabla `chatwoot_configs`
+  - Índices en `tenantId`, `branchId`, `isActive`
+  - Foreign keys con CASCADE delete
+
+**Utilidades y Tipos:**
+- ✅ `lib/chatwoot/types.ts` - Tipos TypeScript completos
+  - `ChatwootConfig`
+  - `ChatwootSettings`
+  - `ChatwootUser`
+  - `ChatwootCustomAttributes`
+  - Declaraciones globales para window.$chatwoot
+- ✅ `lib/chatwoot/config.ts` - Configuración y validaciones
+  - Settings por defecto
+  - Función `getDefaultChatwootConfig()`
+  - Validación de configuraciones
+  - Sanitización de URLs
+- ✅ `lib/chatwoot/server.ts` - Funciones server-side
+  - `getChatwootConfig(tenantId, branchId?)` - Obtener config del tenant
+  - `getTenantByChatSession(chatSessionId)` - Identificar tenant por sesión
+  - Manejo de configuraciones por defecto
+
+**Características Avanzadas:**
+- ✅ **Multi-tenant**: Cada tenant puede tener su propia instancia/inbox de Chatwoot
+- ✅ **Por sucursal**: Configuración opcional específica por branch
+- ✅ **Atributos personalizados**: Envío automático de:
+  - `tenantId` - UUID del tenant
+  - `tenantName` - Nombre del negocio
+  - `role` - Rol del usuario (ADMIN, USER, etc.)
+  - `branchId` - UUID de la sucursal (opcional)
+  - `branchName` - Nombre de la sucursal (opcional)
+- ✅ **Identificación de usuarios**: Datos enviados automáticamente:
+  - `identifier` - UUID único del usuario
+  - `name` - Nombre completo
+  - `email` - Email del usuario
+  - `avatar_url` - URL del avatar
+  - `phone_number` - Teléfono (opcional)
+- ✅ **Personalización del widget**:
+  - Posición (left/right)
+  - Idioma (es, en, fr, de, pt, it, ca, etc.)
+  - Color del widget
+  - Modo oscuro/claro
+  - Título del launcher
+  - Hide message bubble
+- ✅ **Control programático**:
+  - `window.$chatwoot.toggle()` - Abrir/cerrar chat
+  - `window.$chatwoot.setUser()` - Identificar usuario
+  - `window.$chatwoot.setCustomAttributes()` - Establecer atributos
+  - `window.$chatwoot.setLabel()` - Agregar etiquetas
+  - `window.$chatwoot.reset()` - Resetear widget
+
+**Documentación:**
+- ✅ `CHATWOOT_INTEGRATION.md` - Documentación completa (60+ páginas)
+  - Resumen ejecutivo
+  - Qué es Chatwoot y por qué se integró
+  - Arquitectura de la integración
+  - Configuración paso a paso:
+    - Crear cuenta en Chatwoot (Cloud o self-hosted)
+    - Obtener website token
+    - Configurar variables de entorno
+    - Configurar por tenant en base de datos
+  - Uso de la API de configuración
+  - Personalización del widget
+  - Atributos personalizados
+  - Identificación de usuarios
+  - Troubleshooting detallado
+  - Ejemplos de código
+  - Diagramas de arquitectura y flujo
+  - FAQ completa
+  - Referencias y recursos
+
+**Variables de Entorno (Opcionales):**
+```env
+NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN=abc123
+NEXT_PUBLIC_CHATWOOT_BASE_URL=https://app.chatwoot.com
+```
+*Nota: La configuración por variables de entorno es global. Para multi-tenant, usar la base de datos.*
+
+#### Archivos Creados
+
+**Componentes:**
+- `app/components/chatwoot/ChatwootWidget.tsx` (144 líneas)
+- `app/components/chatwoot/ChatwootProvider.tsx` (42 líneas)
+- `app/components/chatwoot/index.ts` (2 líneas)
+
+**Backend:**
+- `app/lib/chatwoot/types.ts` (71 líneas)
+- `app/lib/chatwoot/config.ts` (55 líneas)
+- `app/lib/chatwoot/server.ts` (61 líneas)
+- `app/lib/chatwoot/index.ts` (3 líneas)
+
+**API:**
+- `app/api/chatwoot/config/route.ts` (258 líneas)
+
+**Database:**
+- `app/prisma/migrations/20251112064144_add_chatwoot_integration/migration.sql`
+
+#### Archivos Modificados
+
+- `app/prisma/schema.prisma` - Modelo `ChatwootConfig` agregado
+- `app/components/providers.tsx` - `ChatwootProvider` integrado
+- `app/.env.example` - Variables de Chatwoot agregadas
+- `DEVELOPMENT_ROADMAP.pdf` - Actualizado con integración de Chatwoot
+
+#### Uso Básico
+
+```tsx
+// En tu layout principal
+import { ChatwootProvider } from '@/components/chatwoot';
+
+export default function RootLayout({ children }) {
+  return (
+    <ChatwootProvider>
+      {children}
+    </ChatwootProvider>
+  );
+}
+```
+
+```typescript
+// Crear configuración via API
+POST /api/chatwoot/config
+{
+  "websiteToken": "ABC123xyz456",
+  "baseUrl": "https://app.chatwoot.com",
+  "isActive": true,
+  "position": "right",
+  "locale": "es"
+}
+```
+
+```sql
+-- O directamente en la base de datos
+INSERT INTO chatwoot_configs (
+  id, "websiteToken", "baseUrl", "isActive", "isDefault",
+  position, locale, "tenantId", "createdAt", "updatedAt"
+) VALUES (
+  gen_random_uuid(), 'ABC123xyz456', 'https://app.chatwoot.com',
+  true, true, 'right', 'es', '<tenant_id>', NOW(), NOW()
+);
+```
+
+#### Beneficios
+
+- 📞 **Soporte en tiempo real**: Clientes pueden obtener ayuda sin salir de la app
+- 🏢 **Aislamiento por tenant**: Cada negocio tiene su propio canal
+- 👤 **Contexto rico**: Agentes ven información completa del usuario y tenant
+- 💰 **Open Source**: Sin costos de licencia, puede ser self-hosted
+- 🌐 **Multi-canal**: Integra WhatsApp, Facebook, Email, etc. desde Chatwoot
+- 📊 **Analytics**: Reportes de conversaciones por tenant/sucursal
+- 🤖 **Automatización**: Respuestas automáticas y bots configurables
+
+#### Próximos Pasos
+
+- [ ] Panel de administración en UI para gestionar configuraciones
+- [ ] Webhooks para escuchar eventos de Chatwoot
+- [ ] Integración con WhatsApp desde CitaPlanner
+- [ ] Dashboard de analytics de conversaciones
+- [ ] Notificaciones en CitaPlanner cuando hay mensaje nuevo
+- [ ] Chat interno entre sucursales usando Chatwoot
+
+#### Referencias
+
+- Documentación completa: `CHATWOOT_INTEGRATION.md`
+- Chatwoot oficial: https://www.chatwoot.com/
+- API docs: https://www.chatwoot.com/developers/api
+- GitHub: https://github.com/chatwoot/chatwoot
+
+---
+
 ## [1.11.0] - 2025-11-12
 
 ### Added - Sistema de Notificaciones en Tiempo Real (Fase 5)
