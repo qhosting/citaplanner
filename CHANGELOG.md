@@ -1,3 +1,500 @@
+# Changelog
+
+## [1.11.1] - 2025-11-12
+
+### Added - Integración de Chatwoot Live Chat
+
+#### 🎯 Resumen
+Integración completa de Chatwoot, una plataforma de soporte y chat en vivo de código abierto, con soporte multi-tenant, identificación automática de usuarios y atributos personalizados.
+
+#### Características Principales
+
+**Componentes de Integración:**
+- ✅ `ChatwootWidget` - Widget de chat interactivo
+  - Carga dinámica del SDK de Chatwoot
+  - Identificación automática de usuarios autenticados
+  - Envío de atributos personalizados (tenantId, role, branchId)
+  - Configuración personalizable (posición, idioma, colores)
+  - Control programático del widget
+  - Soporte para usuarios anónimos
+- ✅ `ChatwootProvider` - Provider para el layout principal
+  - Carga configuración desde API
+  - Inicialización automática del widget
+  - Gestión de sesión y re-identificación
+
+**API REST:**
+- ✅ `/api/chatwoot/config` - Endpoints CRUD para configuraciones
+  - `GET` - Obtener configuración del tenant actual
+  - `POST` - Crear nueva configuración (solo ADMINs)
+  - `PUT` - Actualizar configuración existente
+  - `DELETE` - Eliminar configuración
+  - Validación de permisos (ADMIN/SUPERADMIN)
+  - Sanitización de URLs
+  - Validación de datos
+
+**Backend y Database:**
+- ✅ Modelo `ChatwootConfig` en Prisma
+  - `websiteToken` - Token del inbox de Chatwoot
+  - `baseUrl` - URL de la instancia de Chatwoot
+  - `isActive` - Estado habilitado/deshabilitado
+  - `isDefault` - Configuración por defecto del tenant
+  - `position` - Posición del widget (left/right)
+  - `locale` - Idioma del widget
+  - `widgetColor` - Color personalizado
+  - `tenantId` - Relación con tenant (CASCADE)
+  - `branchId` - Relación opcional con sucursal (CASCADE)
+- ✅ Migración Prisma `add_chatwoot_integration`
+  - Tabla `chatwoot_configs`
+  - Índices en `tenantId`, `branchId`, `isActive`
+  - Foreign keys con CASCADE delete
+
+**Utilidades y Tipos:**
+- ✅ `lib/chatwoot/types.ts` - Tipos TypeScript completos
+  - `ChatwootConfig`
+  - `ChatwootSettings`
+  - `ChatwootUser`
+  - `ChatwootCustomAttributes`
+  - Declaraciones globales para window.$chatwoot
+- ✅ `lib/chatwoot/config.ts` - Configuración y validaciones
+  - Settings por defecto
+  - Función `getDefaultChatwootConfig()`
+  - Validación de configuraciones
+  - Sanitización de URLs
+- ✅ `lib/chatwoot/server.ts` - Funciones server-side
+  - `getChatwootConfig(tenantId, branchId?)` - Obtener config del tenant
+  - `getTenantByChatSession(chatSessionId)` - Identificar tenant por sesión
+  - Manejo de configuraciones por defecto
+
+**Características Avanzadas:**
+- ✅ **Multi-tenant**: Cada tenant puede tener su propia instancia/inbox de Chatwoot
+- ✅ **Por sucursal**: Configuración opcional específica por branch
+- ✅ **Atributos personalizados**: Envío automático de:
+  - `tenantId` - UUID del tenant
+  - `tenantName` - Nombre del negocio
+  - `role` - Rol del usuario (ADMIN, USER, etc.)
+  - `branchId` - UUID de la sucursal (opcional)
+  - `branchName` - Nombre de la sucursal (opcional)
+- ✅ **Identificación de usuarios**: Datos enviados automáticamente:
+  - `identifier` - UUID único del usuario
+  - `name` - Nombre completo
+  - `email` - Email del usuario
+  - `avatar_url` - URL del avatar
+  - `phone_number` - Teléfono (opcional)
+- ✅ **Personalización del widget**:
+  - Posición (left/right)
+  - Idioma (es, en, fr, de, pt, it, ca, etc.)
+  - Color del widget
+  - Modo oscuro/claro
+  - Título del launcher
+  - Hide message bubble
+- ✅ **Control programático**:
+  - `window.$chatwoot.toggle()` - Abrir/cerrar chat
+  - `window.$chatwoot.setUser()` - Identificar usuario
+  - `window.$chatwoot.setCustomAttributes()` - Establecer atributos
+  - `window.$chatwoot.setLabel()` - Agregar etiquetas
+  - `window.$chatwoot.reset()` - Resetear widget
+
+**Documentación:**
+- ✅ `CHATWOOT_INTEGRATION.md` - Documentación completa (60+ páginas)
+  - Resumen ejecutivo
+  - Qué es Chatwoot y por qué se integró
+  - Arquitectura de la integración
+  - Configuración paso a paso:
+    - Crear cuenta en Chatwoot (Cloud o self-hosted)
+    - Obtener website token
+    - Configurar variables de entorno
+    - Configurar por tenant en base de datos
+  - Uso de la API de configuración
+  - Personalización del widget
+  - Atributos personalizados
+  - Identificación de usuarios
+  - Troubleshooting detallado
+  - Ejemplos de código
+  - Diagramas de arquitectura y flujo
+  - FAQ completa
+  - Referencias y recursos
+
+**Variables de Entorno (Opcionales):**
+```env
+NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN=abc123
+NEXT_PUBLIC_CHATWOOT_BASE_URL=https://app.chatwoot.com
+```
+*Nota: La configuración por variables de entorno es global. Para multi-tenant, usar la base de datos.*
+
+#### Archivos Creados
+
+**Componentes:**
+- `app/components/chatwoot/ChatwootWidget.tsx` (144 líneas)
+- `app/components/chatwoot/ChatwootProvider.tsx` (42 líneas)
+- `app/components/chatwoot/index.ts` (2 líneas)
+
+**Backend:**
+- `app/lib/chatwoot/types.ts` (71 líneas)
+- `app/lib/chatwoot/config.ts` (55 líneas)
+- `app/lib/chatwoot/server.ts` (61 líneas)
+- `app/lib/chatwoot/index.ts` (3 líneas)
+
+**API:**
+- `app/api/chatwoot/config/route.ts` (258 líneas)
+
+**Database:**
+- `app/prisma/migrations/20251112064144_add_chatwoot_integration/migration.sql`
+
+#### Archivos Modificados
+
+- `app/prisma/schema.prisma` - Modelo `ChatwootConfig` agregado
+- `app/components/providers.tsx` - `ChatwootProvider` integrado
+- `app/.env.example` - Variables de Chatwoot agregadas
+- `DEVELOPMENT_ROADMAP.pdf` - Actualizado con integración de Chatwoot
+
+#### Uso Básico
+
+```tsx
+// En tu layout principal
+import { ChatwootProvider } from '@/components/chatwoot';
+
+export default function RootLayout({ children }) {
+  return (
+    <ChatwootProvider>
+      {children}
+    </ChatwootProvider>
+  );
+}
+```
+
+```typescript
+// Crear configuración via API
+POST /api/chatwoot/config
+{
+  "websiteToken": "ABC123xyz456",
+  "baseUrl": "https://app.chatwoot.com",
+  "isActive": true,
+  "position": "right",
+  "locale": "es"
+}
+```
+
+```sql
+-- O directamente en la base de datos
+INSERT INTO chatwoot_configs (
+  id, "websiteToken", "baseUrl", "isActive", "isDefault",
+  position, locale, "tenantId", "createdAt", "updatedAt"
+) VALUES (
+  gen_random_uuid(), 'ABC123xyz456', 'https://app.chatwoot.com',
+  true, true, 'right', 'es', '<tenant_id>', NOW(), NOW()
+);
+```
+
+#### Beneficios
+
+- 📞 **Soporte en tiempo real**: Clientes pueden obtener ayuda sin salir de la app
+- 🏢 **Aislamiento por tenant**: Cada negocio tiene su propio canal
+- 👤 **Contexto rico**: Agentes ven información completa del usuario y tenant
+- 💰 **Open Source**: Sin costos de licencia, puede ser self-hosted
+- 🌐 **Multi-canal**: Integra WhatsApp, Facebook, Email, etc. desde Chatwoot
+- 📊 **Analytics**: Reportes de conversaciones por tenant/sucursal
+- 🤖 **Automatización**: Respuestas automáticas y bots configurables
+
+#### Próximos Pasos
+
+- [ ] Panel de administración en UI para gestionar configuraciones
+- [ ] Webhooks para escuchar eventos de Chatwoot
+- [ ] Integración con WhatsApp desde CitaPlanner
+- [ ] Dashboard de analytics de conversaciones
+- [ ] Notificaciones en CitaPlanner cuando hay mensaje nuevo
+- [ ] Chat interno entre sucursales usando Chatwoot
+
+#### Referencias
+
+- Documentación completa: `CHATWOOT_INTEGRATION.md`
+- Chatwoot oficial: https://www.chatwoot.com/
+- API docs: https://www.chatwoot.com/developers/api
+- GitHub: https://github.com/chatwoot/chatwoot
+
+---
+
+## [1.11.0] - 2025-11-12
+
+### Added - Sistema de Notificaciones en Tiempo Real (Fase 5)
+
+#### 🎯 Resumen
+Sistema completo de notificaciones en tiempo real basado en WebSocket (Socket.io) con sincronización multi-usuario, centro de notificaciones, preferencias configurables y actualización automática del calendario.
+
+#### Características Principales
+
+**WebSocket Server (Socket.io):**
+- ✅ Servidor Socket.io integrado con Next.js
+- ✅ Autenticación JWT obligatoria mediante NextAuth
+- ✅ Soporte multi-tenant con rooms aislados
+- ✅ Room management (tenant, user, role)
+- ✅ Reconexión automática en cliente
+- ✅ Estado de presencia de usuarios
+- ✅ Broadcasting a usuarios específicos
+- ✅ Middleware de autenticación robusto
+
+**Componentes UI:**
+- ✅ `NotificationBell` - Icono de campana con contador de no leídas
+  - Badge dinámico
+  - Dropdown con últimas 5 notificaciones
+  - Acciones rápidas (marcar como leída)
+  - Navegación a centro de notificaciones
+- ✅ `NotificationCenter` - Panel completo de notificaciones
+  - Lista de todas las notificaciones
+  - Filtros (todas/no leídas/leídas)
+  - Filtro por tipo de evento
+  - Scroll area con 600px de altura
+  - Acciones: marcar como leída, eliminar
+  - Indicadores de prioridad (urgent, high, medium, low)
+- ✅ `NotificationToast` - Sistema de toasts en tiempo real
+  - Toasts diferenciados por tipo de evento
+  - Iconos personalizados (Calendar, Bell, AlertTriangle, etc.)
+  - Acciones contextuales
+  - Sonidos opcionales configurables
+- ✅ `NotificationProvider` - Provider de contexto
+  - Carga inicial de notificaciones
+  - Escucha eventos WebSocket
+  - Actualiza store automáticamente
+  - Muestra toasts para eventos importantes
+
+**Hook personalizado:**
+- ✅ `useSocket` - Hook para gestión de WebSocket
+  - Auto-conexión con token JWT
+  - Estados: `socket`, `isConnected`, `on`, `off`, `emit`
+  - Reconexión automática (5 intentos)
+  - Event listeners simplificados
+  - Limpieza automática en unmount
+
+**Páginas:**
+- ✅ `/notifications` - Centro de notificaciones completo
+- ✅ `/notifications/preferences` - Configuración de preferencias
+  - Canales: Push, Email, SMS, WhatsApp
+  - Tipos de eventos a notificar
+  - Sonidos y notificaciones del navegador
+  - Toasts en pantalla
+  - Notificaciones de escritorio
+
+**Servicio de Notificaciones en Tiempo Real:**
+- ✅ `realtimeNotificationService.ts` - Servicio para emitir eventos
+  - `emitAppointmentCreated`
+  - `emitAppointmentUpdated`
+  - `emitAppointmentDeleted`
+  - `emitAppointmentRescheduled`
+  - `emitScheduleUpdated`
+  - `emitSystemAlert`
+  - `emitCommissionEarned`
+  - Verificación de preferencias de usuario
+  - Almacenamiento en NotificationLog
+
+**Store de Notificaciones:**
+- ✅ `notificationStore.ts` - Zustand store para estado global
+  - Lista de notificaciones
+  - Contador de no leídas
+  - Acciones: add, markAsRead, markAllAsRead, delete
+  - Estado de carga
+  - Persistencia en memoria
+
+**Eventos WebSocket Implementados:**
+
+*Cliente → Servidor:*
+- `notification:read` - Marcar como leída
+- `notification:read:all` - Marcar todas como leídas
+- `calendar:viewing` - Usuario viendo calendario
+- `appointment:editing` - Usuario editando cita
+- `appointment:editing:stop` - Dejar de editar
+- `presence:update` - Actualizar estado (online/away)
+
+*Servidor → Cliente:*
+- `connection:success` - Conexión exitosa
+- `notification:new` - Nueva notificación genérica
+- `appointment:created` - Cita creada
+- `appointment:updated` - Cita actualizada
+- `appointment:deleted` - Cita cancelada
+- `appointment:rescheduled` - Cita reprogramada
+- `appointment:reminder` - Recordatorio de cita
+- `schedule:updated` - Horarios actualizados
+- `calendar:refresh` - Refrescar calendario
+- `system:alert` - Alerta del sistema
+- `user:online` - Usuario online
+- `user:offline` - Usuario offline
+- `user:presence` - Cambio de presencia
+- `commission:earned` - Comisión generada
+
+**Integración con Calendario:**
+- ✅ `ProfessionalCalendar` actualizado con sincronización en tiempo real
+  - Auto-refresh cuando hay cambios en citas
+  - Emite evento `calendar:viewing` al cambiar fecha/vista
+  - Escucha eventos de citas (created, updated, deleted, rescheduled)
+  - Escucha eventos de horarios (`schedule:updated`)
+  - Custom event listener para refresh manual
+  - Variable `refreshKey` para forzar re-render
+  - Indicadores visuales de cambios
+
+**Integración con Sidebar:**
+- ✅ `NotificationBell` agregado a `admin-sidebar.tsx`
+- ✅ Posicionado junto al botón de colapsar
+- ✅ Visible tanto en estado colapsado como expandido
+
+**Provider Global:**
+- ✅ `NotificationProvider` y `NotificationToast` integrados en `providers.tsx`
+- ✅ Envuelve toda la aplicación
+- ✅ Inicialización automática al autenticar
+
+**Migraciones de Base de Datos:**
+- ✅ `20251112_add_realtime_notifications/migration.sql`
+  - Tabla `user_notification_preferences`
+  - Campos: enable* (Push, Email, SMS, WhatsApp)
+  - Campos: notify* (tipos de eventos)
+  - Campos: enable* (Sounds, Desktop, Toast)
+  - Campo: `reminderMinutesBefore` (array de minutos)
+  - Relaciones con User y Tenant
+  - Índices optimizados
+
+**Servidor Personalizado:**
+- ✅ `server.js` - Servidor Node.js con Socket.io
+  - Crea servidor HTTP
+  - Integra Next.js
+  - Inicializa Socket.io en evento `listening`
+  - Importación dinámica para evitar problemas ESM
+  - Logs detallados de inicio
+
+**API Routes:**
+- ✅ `/api/notifications` - CRUD de notificaciones
+- ✅ `/api/notifications/preferences` - GET/PUT preferencias
+- ✅ `/api/notifications/[id]/read` - Marcar como leída
+- ✅ `/api/notifications/stats` - Estadísticas
+
+#### Arquitectura
+
+```
+Cliente (Browser)
+  ├── useSocket Hook
+  ├── NotificationProvider
+  ├── NotificationToast
+  └── NotificationBell
+        │
+        ↓ WebSocket (Socket.io)
+        │
+Servidor (Node.js)
+  ├── Socket.io Server
+  │   ├── Autenticación JWT
+  │   ├── Room Management
+  │   └── Event Broadcasting
+  ├── Realtime Notification Service
+  └── PostgreSQL
+      ├── NotificationLog
+      └── UserNotificationPreferences
+```
+
+#### Flujo de Notificación
+
+1. **Usuario A** crea/actualiza una cita
+2. **API Route** guarda en base de datos
+3. **API Route** llama a `realtimeNotificationService`
+4. **Servicio** emite evento a Socket.io
+5. **Socket.io** broadcast a todos los usuarios del tenant
+6. **Usuario B** recibe evento en su browser
+7. **NotificationToast** muestra toast
+8. **NotificationBell** actualiza contador
+9. **ProfessionalCalendar** se refresca automáticamente
+
+#### Seguridad
+
+- ✅ Autenticación JWT obligatoria en WebSocket
+- ✅ Validación de token mediante NextAuth
+- ✅ Usuarios inactivos son rechazados
+- ✅ Aislamiento por tenant (rooms)
+- ✅ Verificación de permisos por rol
+- ✅ No se pueden leer notificaciones de otros tenants
+
+#### Performance
+
+- ✅ Reconexión automática con backoff
+- ✅ Event listeners eficientes con cleanup
+- ✅ Deduplicación de eventos
+- ✅ Lazy loading de notificaciones
+- ✅ Store optimizado con Zustand
+- ✅ Toasts con duración configurable
+
+#### Testing
+
+- ✅ Conexión WebSocket validada
+- ✅ Autenticación JWT probada
+- ✅ Emisión de eventos verificada
+- ✅ Room management validado
+- ✅ Sincronización de calendario probada
+
+#### Documentación
+
+- ✅ `docs/FASE5_REALTIME_NOTIFICATIONS.md` - Documentación completa
+  - Arquitectura del sistema
+  - Componentes implementados
+  - Eventos WebSocket (tabla completa)
+  - Guía de uso con ejemplos
+  - Configuración del servidor
+  - Integración con calendario
+  - API Reference completo
+  - Ejemplos de código
+  - Deployment (Easypanel, Docker)
+  - Seguridad y monitoring
+  - Troubleshooting
+
+#### Mejores Prácticas Aplicadas
+
+- ✅ TypeScript strict mode
+- ✅ Manejo de errores robusto
+- ✅ Logging apropiado
+- ✅ Cleanup de event listeners
+- ✅ Código modular y reutilizable
+- ✅ Comentarios descriptivos
+- ✅ Convenciones del proyecto seguidas
+- ✅ Production-ready
+
+#### Archivos Creados/Modificados
+
+**Nuevos Archivos:**
+- `app/lib/socket/server.ts` (servidor Socket.io)
+- `app/hooks/useSocket.ts` (hook cliente)
+- `app/lib/stores/notificationStore.ts` (Zustand store)
+- `app/components/realtime-notifications/NotificationBell.tsx`
+- `app/components/realtime-notifications/NotificationCenter.tsx`
+- `app/components/realtime-notifications/NotificationToast.tsx`
+- `app/components/realtime-notifications/NotificationProvider.tsx`
+- `app/components/realtime-notifications/index.ts`
+- `app/(authenticated)/notifications/page.tsx`
+- `app/(authenticated)/notifications/preferences/page.tsx`
+- `app/prisma/migrations/20251112_add_realtime_notifications/migration.sql`
+- `app/server.js`
+- `docs/FASE5_REALTIME_NOTIFICATIONS.md`
+
+**Archivos Modificados:**
+- `app/components/providers.tsx` (integración NotificationProvider)
+- `app/components/admin/admin-sidebar.tsx` (NotificationBell)
+- `app/components/calendar/ProfessionalCalendar.tsx` (WebSocket)
+- `app/prisma/schema.prisma` (UserNotificationPreferences model)
+- `app/package.json` (socket.io dependencies)
+
+#### Próximos Pasos Sugeridos
+
+- Rate limiting para eventos
+- Persistencia de eventos offline
+- Notificaciones push móviles (PWA)
+- Analytics de notificaciones
+- Notificaciones por categoría
+- Agrupación inteligente de notificaciones
+
+#### Breaking Changes
+
+Ninguno. Todos los cambios son retrocompatibles.
+
+#### Migration Guide
+
+1. Pull del branch `feature/fase5-realtime-notifications`
+2. Instalar dependencias: `npm install`
+3. Aplicar migración: `npm run migrate:deploy`
+4. Iniciar con servidor personalizado: `node server.js`
+
+---
+
 Here's the result of running `cat -n` on /home/ubuntu/github_repos/citaplanner/CHANGELOG.md:
 
 ## [1.10.0] - 2025-10-15

@@ -193,6 +193,10 @@ model Tenant {
   // Sprint 2: WhatsApp Integration
   whatsappConfigs         WhatsAppConfig[]
   messageTemplates        MessageTemplate[]
+  chatwootConfigs         ChatwootConfig[]
+
+  // Fase 5: Real-Time Notifications
+  userNotificationPreferences UserNotificationPreferences[]
 
   @@map("tenants")
 }
@@ -224,6 +228,7 @@ model Branch {
   // Sprint 2: WhatsApp Integration
   whatsappConfigs         WhatsAppConfig[]
   messageTemplates        MessageTemplate[]
+  chatwootConfigs         ChatwootConfig[]
 
   @@map("branches")
 }
@@ -276,6 +281,9 @@ model User {
   
   // Fase 2: Asignaciones a sucursales
   branchAssignments BranchAssignment[] @relation("ProfessionalAssignments")
+
+  // Fase 5: Real-Time Notifications
+  notificationPreferences UserNotificationPreferences?
 
   @@map("users")
 }
@@ -659,6 +667,44 @@ model PushSubscription {
   @@index([tenantId, isActive])
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// User Notification Preferences (Fase 5: Real-Time Notifications)
+model UserNotificationPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Preferencias de canal
+  enablePushNotifications     Boolean @default(true)
+  enableEmailNotifications    Boolean @default(true)
+  enableSMSNotifications      Boolean @default(false)
+  enableWhatsAppNotifications Boolean @default(false)
+
+  // Preferencias de eventos
+  notifyAppointmentCreated   Boolean @default(true)
+  notifyAppointmentUpdated   Boolean @default(true)
+  notifyAppointmentCancelled Boolean @default(true)
+  notifyAppointmentReminder  Boolean @default(true)
+  notifyScheduleChanges      Boolean @default(true)
+  notifySystemAlerts         Boolean @default(true)
+
+  // Preferencias de UI
+  enableSounds               Boolean @default(true)
+  enableDesktopNotifications Boolean @default(true)
+  enableToastNotifications   Boolean @default(true)
+
+  // Configuración de recordatorios (minutos antes de la cita)
+  reminderMinutesBefore Int[] @default([1440, 60]) // 24h y 1h antes
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("user_notification_preferences")
 }
 
 // Configuración del Master Admin
@@ -1203,4 +1249,36 @@ model ReminderLog {
   @@index([appointmentId])
   @@index([sentAt])
   @@map("reminder_logs")
+}
+
+// ============================================================================
+// CHATWOOT INTEGRATION
+// ============================================================================
+
+// Chatwoot Configuration
+model ChatwootConfig {
+  id           String  @id @default(cuid())
+  websiteToken String  @db.Text // Chatwoot website token
+  baseUrl      String // Chatwoot installation URL
+  isActive     Boolean @default(true)
+  isDefault    Boolean @default(false) // Default config for tenant
+  
+  // Widget settings
+  position     String  @default("right") // "left" or "right"
+  locale       String  @default("es") // Language code
+  widgetColor  String? // Custom widget color
+  
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  branchId String? // Null means global configuration for tenant
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([isActive])
+  @@map("chatwoot_configs")
 }
