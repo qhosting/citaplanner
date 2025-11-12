@@ -1,48 +1,71 @@
+# 📜 Scripts de CitaPlanner
 
-# Scripts de Utilidad
+## 🌱 seed.ts
 
-## generate-master-hash.ts
-
-Script para generar hashes de master password compatibles con bcryptjs.
+Script para insertar datos de prueba en la base de datos.
 
 ### Uso
 
 ```bash
-# Modo interactivo (te pedirá el password)
+# Opción 1: Usando npm (recomendado)
+npm run seed
+
+# Opción 2: Usando Prisma directamente
+npx prisma db seed
+
+# Opción 3: Ejecución directa
+npm run seed:force
+```
+
+### Datos Creados
+
+- **1 Empresa**: Bella Vita Spa & Wellness
+- **1 Sucursal**: Sucursal Centro
+- **5 Usuarios**: Admin, Manager, 2 Profesionales, Recepcionista
+- **6 Servicios**: Faciales, masajes, manicure, cortes
+- **6 Clientes**: Clientes de ejemplo
+- **6 Citas**: Citas de hoy, mañana y completadas
+- **3 Pagos**: Pagos para citas completadas
+- **Horarios**: Lunes-Viernes 9:00-18:00, Sábados 10:00-16:00
+
+### Credenciales
+
+| Email | Contraseña | Rol |
+|-------|-----------|-----|
+| admin@citaplanner.com | admin123 | ADMIN |
+| manager@citaplanner.com | manager123 | MANAGER |
+| pro1@citaplanner.com | prof123 | PROFESSIONAL |
+| pro2@citaplanner.com | prof123 | PROFESSIONAL |
+| recepcionista@citaplanner.com | prof123 | RECEPTIONIST |
+
+### Requisitos
+
+- Variable de entorno `DATABASE_URL` configurada
+- Base de datos PostgreSQL accesible
+- Dependencias instaladas (`npm install`)
+
+### ⚠️ Advertencia
+
+Este script **ELIMINA TODOS LOS USUARIOS EXISTENTES** antes de insertar los datos de prueba. Haz un backup si tienes datos importantes.
+
+---
+
+## 🔐 generate-master-hash.ts
+
+Script para generar hashes de bcrypt para la contraseña del Master Admin.
+
+### Uso
+
+```bash
 npm run generate-hash
-
-# Con password como argumento
-npm run generate-hash -- "tu_password_aqui"
 ```
 
-### ¿Por qué este script?
+Sigue las instrucciones en pantalla para ingresar la contraseña y obtener el hash.
 
-El hash de master password debe ser generado con **bcryptjs** (la librería usada en Node.js) para asegurar compatibilidad total. Los hashes generados con Python bcrypt pueden tener problemas de compatibilidad debido a diferencias en los prefijos ($2a$ vs $2b$).
+---
 
-### Características
+## 📝 generate-version.sh
 
-- ✅ Genera hashes compatibles con bcryptjs
-- ✅ Usa 12 salt rounds (balance seguridad/performance)
-- ✅ Verifica automáticamente que el hash funciona
-- ✅ Proporciona instrucciones claras para configurar en Easypanel
+Script que genera información de versión para el build de producción.
 
-### Ejemplo de salida
-
-```
-🔐 Generando hash de master password...
-
-✅ Hash generado exitosamente!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 MASTER_PASSWORD_HASH:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-$2a$12$abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📝 Instrucciones:
-1. Copia el hash completo de arriba
-2. En Easypanel, ve a tu aplicación > Environment
-3. Actualiza la variable MASTER_PASSWORD_HASH con este valor
-4. Guarda los cambios y reinicia el contenedor
-```
-
+Se ejecuta automáticamente antes de cada build (`prebuild` script).
