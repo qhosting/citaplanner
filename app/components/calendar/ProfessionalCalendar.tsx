@@ -1,17 +1,18 @@
 'use client';
 
 /**
- * Professional Calendar Component - Phase 4
+ * Professional Calendar Component - Phase 4 + Phase 5 Real-Time Integration
  * 
- * Componente principal del calendario con drag & drop
+ * Componente principal del calendario con drag & drop y sincronización en tiempo real
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer, Event as BigCalendarEvent } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarEvent, CalendarView, getStatusColor } from '@/app/lib/types/calendar';
 import { AppointmentStatus } from '@prisma/client';
+import { useSocket } from '@/hooks/useSocket';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Configurar localizer con date-fns
@@ -54,6 +55,70 @@ export default function ProfessionalCalendar({
   availabilityBlocks = [],
   loading = false,
 }: ProfessionalCalendarProps) {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { on, off, emit, isConnected } = useSocket();
+
+  // Integración con WebSocket para sincronización en tiempo real
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Emitir que estamos viendo el calendario
+    emit('calendar:viewing', {
+      date: format(date, 'yyyy-MM-dd'),
+      viewType: view,
+    });
+
+    // Escuchar eventos de cambios en citas
+    const handleAppointmentCreated = () => {
+      // Forzar refresh del calendario
+      setRefreshKey(prev => prev + 1);
+    };
+
+    const handleAppointmentUpdated = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+
+    const handleAppointmentDeleted = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+
+    const handleAppointmentRescheduled = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+
+    const handleScheduleUpdated = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+
+    const handleCalendarRefresh = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+
+    // Registrar event listeners
+    on('appointment:created', handleAppointmentCreated);
+    on('appointment:updated', handleAppointmentUpdated);
+    on('appointment:deleted', handleAppointmentDeleted);
+    on('appointment:rescheduled', handleAppointmentRescheduled);
+    on('schedule:updated', handleScheduleUpdated);
+    on('calendar:refresh', handleCalendarRefresh);
+
+    // Custom event listener para refresh manual
+    const handleCustomRefresh = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    window.addEventListener('calendar:refresh', handleCustomRefresh);
+
+    return () => {
+      off('appointment:created', handleAppointmentCreated);
+      off('appointment:updated', handleAppointmentUpdated);
+      off('appointment:deleted', handleAppointmentDeleted);
+      off('appointment:rescheduled', handleAppointmentRescheduled);
+      off('schedule:updated', handleScheduleUpdated);
+      off('calendar:refresh', handleCalendarRefresh);
+      window.removeEventListener('calendar:refresh', handleCustomRefresh);
+    };
+  }, [isConnected, on, off, emit, date, view]);
+
   // Configuración de estilos personalizados
   const eventStyleGetter = useCallback(
     (event: CalendarEvent) => {
