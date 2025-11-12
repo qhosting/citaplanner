@@ -186,14 +186,14 @@ model Tenant {
   sales                   Sale[]
   inventoryMovements      InventoryMovement[]
   professionalCommissions ProfessionalCommission[]
-  
+
   // Fase 2: Asignaciones de profesionales a sucursales
-  branchAssignments       BranchAssignment[]
-  
+  branchAssignments BranchAssignment[]
+
   // Sprint 2: WhatsApp Integration
-  whatsappConfigs         WhatsAppConfig[]
-  messageTemplates        MessageTemplate[]
-  chatwootConfigs         ChatwootConfig[]
+  whatsappConfigs  WhatsAppConfig[]
+  messageTemplates MessageTemplate[]
+  chatwootConfigs  ChatwootConfig[]
 
   // Fase 5: Real-Time Notifications
   userNotificationPreferences UserNotificationPreferences[]
@@ -221,14 +221,14 @@ model Branch {
   appointments Appointment[]
   payments     Payment[]
   workingHours WorkingHours[]
-  
+
   // Fase 2: Asignaciones de profesionales
   professionalAssignments BranchAssignment[] @relation("BranchAssignments")
-  
+
   // Sprint 2: WhatsApp Integration
-  whatsappConfigs         WhatsAppConfig[]
-  messageTemplates        MessageTemplate[]
-  chatwootConfigs         ChatwootConfig[]
+  whatsappConfigs  WhatsAppConfig[]
+  messageTemplates MessageTemplate[]
+  chatwootConfigs  ChatwootConfig[]
 
   @@map("branches")
 }
@@ -278,7 +278,7 @@ model User {
   saleItemsAsProfessional SaleItem[]               @relation("ProfessionalSaleItems")
 
   calendarConnections ExternalCalendarConnection[]
-  
+
   // Fase 2: Asignaciones a sucursales
   branchAssignments BranchAssignment[] @relation("ProfessionalAssignments")
 
@@ -367,6 +367,9 @@ model Client {
   notes     String?
   isActive  Boolean   @default(true)
 
+  // Chatwoot Integration
+  chatwootContactId String? // ID del contacto en Chatwoot
+
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -382,6 +385,7 @@ model Client {
   sales Sale[]
 
   @@unique([phone, tenantId])
+  @@index([chatwootContactId])
   @@map("clients")
 }
 
@@ -427,10 +431,10 @@ model Appointment {
   externalEtag         String?
   lastModifiedSource   String?
   icloudSyncEnabled    Boolean                     @default(false)
-  
+
   // Sprint 2: WhatsApp Integration
-  whatsappLogs     WhatsAppLog[]
-  reminderLogs     ReminderLog[]
+  whatsappLogs WhatsAppLog[]
+  reminderLogs ReminderLog[]
 
   @@map("appointments")
 }
@@ -527,6 +531,7 @@ enum NotificationChannel {
   PUSH
   EMAIL
   SMS
+  CHATWOOT
 }
 
 enum NotificationStatus {
@@ -546,11 +551,18 @@ model NotificationSettings {
   pushEnabled     Boolean @default(false)
   emailEnabled    Boolean @default(true)
   smsEnabled      Boolean @default(false)
+  chatwootEnabled Boolean @default(false)
 
   // WhatsApp Evolution API configuration
   evolutionApiUrl      String?
   evolutionApiKey      String?
   whatsappInstanceName String?
+
+  // Chatwoot configuration (moved from ChatwootConfig for notifications)
+  chatwootApiUrl    String?
+  chatwootApiToken  String? @db.Text
+  chatwootAccountId String?
+  chatwootInboxId   String?
 
   // Appointment reminder settings
   appointmentReminderEnabled Boolean @default(true)
@@ -1079,28 +1091,28 @@ model CalendarSyncLog {
 
 // Fase 2: Asignación masiva de profesionales a sucursales
 model BranchAssignment {
-  id             String   @id @default(cuid())
+  id             String @id @default(cuid())
   professionalId String
-  professional   User     @relation("ProfessionalAssignments", fields: [professionalId], references: [id], onDelete: Cascade)
-  
-  branchId       String
-  branch         Branch   @relation("BranchAssignments", fields: [branchId], references: [id], onDelete: Cascade)
-  
-  tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  isPrimary      Boolean  @default(false)
-  isActive       Boolean  @default(true)
-  startDate      DateTime?
-  endDate        DateTime?
-  notes          String?  @db.Text
-  
+  professional   User   @relation("ProfessionalAssignments", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  branchId String
+  branch   Branch @relation("BranchAssignments", fields: [branchId], references: [id], onDelete: Cascade)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  isPrimary Boolean   @default(false)
+  isActive  Boolean   @default(true)
+  startDate DateTime?
+  endDate   DateTime?
+  notes     String?   @db.Text
+
   // Horario específico para esta sucursal (sobrescribe el horario general del profesional)
   scheduleOverride Json?
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([professionalId, branchId])
   @@index([professionalId])
   @@index([branchId])
@@ -1147,27 +1159,27 @@ model WhatsAppConfig {
   phoneNumber  String // WhatsApp Business number
   isActive     Boolean @default(true)
   isDefault    Boolean @default(false) // Default config for tenant
-  
+
   // Configuration options
-  sendOnCreate    Boolean @default(true)  // Send notification on appointment creation
-  sendOnUpdate    Boolean @default(true)  // Send notification on appointment update
-  sendOnCancel    Boolean @default(true)  // Send notification on appointment cancellation
-  sendReminder24h Boolean @default(true)  // Send 24h reminder
-  sendReminder1h  Boolean @default(true)  // Send 1h reminder
-  
+  sendOnCreate    Boolean @default(true) // Send notification on appointment creation
+  sendOnUpdate    Boolean @default(true) // Send notification on appointment update
+  sendOnCancel    Boolean @default(true) // Send notification on appointment cancellation
+  sendReminder24h Boolean @default(true) // Send 24h reminder
+  sendReminder1h  Boolean @default(true) // Send 1h reminder
+
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   branchId String? // Null means global configuration for tenant
   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relations
-  whatsappLogs  WhatsAppLog[]
-  reminderLogs  ReminderLog[]
-  
+  whatsappLogs WhatsAppLog[]
+  reminderLogs ReminderLog[]
+
   @@unique([tenantId, branchId])
   @@index([tenantId, isActive])
   @@index([branchId])
@@ -1176,25 +1188,25 @@ model WhatsAppConfig {
 
 // WhatsApp Message Log
 model WhatsAppLog {
-  id         String             @id @default(cuid())
-  configId   String
-  config     WhatsAppConfig     @relation(fields: [configId], references: [id], onDelete: Cascade)
-  
+  id       String         @id @default(cuid())
+  configId String
+  config   WhatsAppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
   appointmentId String?
   appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
-  
+
   messageType String // "appointment_created", "appointment_updated", etc.
   recipient   String // Phone number
-  message     String  @db.Text
+  message     String            @db.Text
   status      WhatsAppLogStatus @default(PENDING)
-  response    String? @db.Text // API response
-  error       String? @db.Text // Error message if failed
-  
+  response    String?           @db.Text // API response
+  error       String?           @db.Text // Error message if failed
+
   sentAt DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([configId])
   @@index([appointmentId])
   @@index([status])
@@ -1211,16 +1223,16 @@ model MessageTemplate {
   variables Json? // Array of variable names
   isActive  Boolean             @default(true)
   isDefault Boolean             @default(false) // Default template for this type
-  
+
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   branchId String? // Null means global template for tenant
   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([tenantId, type])
   @@index([branchId])
   @@index([isActive])
@@ -1229,22 +1241,22 @@ model MessageTemplate {
 
 // Reminder Log
 model ReminderLog {
-  id           String        @id @default(cuid())
-  configId     String
-  config       WhatsAppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  
+  id       String         @id @default(cuid())
+  configId String
+  config   WhatsAppConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
   appointmentId String
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  
+
   reminderType ReminderType
   sentAt       DateTime
   status       WhatsAppLogStatus @default(SENT)
-  response     String?       @db.Text
-  error        String?       @db.Text
-  
+  response     String?           @db.Text
+  error        String?           @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([configId])
   @@index([appointmentId])
   @@index([sentAt])
@@ -1258,25 +1270,33 @@ model ReminderLog {
 // Chatwoot Configuration
 model ChatwootConfig {
   id           String  @id @default(cuid())
-  websiteToken String  @db.Text // Chatwoot website token
+  websiteToken String  @db.Text // Chatwoot website token (para widget)
   baseUrl      String // Chatwoot installation URL
   isActive     Boolean @default(true)
   isDefault    Boolean @default(false) // Default config for tenant
-  
+
+  // API Configuration (para envío de mensajes)
+  apiAccessToken String? @db.Text // API access token
+  accountId      String? // Chatwoot account ID
+  inboxId        String? // Inbox ID para envío de mensajes
+
   // Widget settings
-  position     String  @default("right") // "left" or "right"
-  locale       String  @default("es") // Language code
-  widgetColor  String? // Custom widget color
-  
+  position    String  @default("right") // "left" or "right"
+  locale      String  @default("es") // Language code
+  widgetColor String? // Custom widget color
+
+  // Notification settings
+  enableNotifications Boolean @default(false) // Habilitar envío de notificaciones
+
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   branchId String? // Null means global configuration for tenant
   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([tenantId])
   @@index([branchId])
   @@index([isActive])
