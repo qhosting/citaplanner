@@ -134,6 +134,9 @@ export class NotificationService {
         case NotificationChannel.PUSH:
           sendResult = await this.sendPush(recipient, finalMessage, params.variables);
           break;
+        case NotificationChannel.CHATWOOT:
+          sendResult = await this.sendChatwoot(recipient, finalMessage, tenant.id);
+          break;
         default:
           sendResult = {
             success: false,
@@ -322,6 +325,8 @@ export class NotificationService {
         return settings.smsEnabled;
       case NotificationChannel.PUSH:
         return settings.pushEnabled;
+      case NotificationChannel.CHATWOOT:
+        return settings.chatwootEnabled;
       default:
         return false;
     }
@@ -429,6 +434,29 @@ export class NotificationService {
     } catch (error: any) {
       console.error('[NotificationService] Error enviando push:', error);
       return { success: false, error: error.message || 'Error al enviar push notification' };
+    }
+  }
+
+  private async sendChatwoot(recipient: any, message: string, tenantId: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      if (!recipient.phone) {
+        return { success: false, error: 'Cliente no tiene número de teléfono' };
+      }
+
+      // Importar el servicio de Chatwoot
+      const { chatwootApiService } = await import('@/lib/chatwoot/api');
+
+      // Enviar mensaje
+      const result = await chatwootApiService.sendMessageToContact({
+        to: recipient.phone,
+        message,
+        tenantId,
+      });
+
+      return result;
+    } catch (error: any) {
+      console.error('[NotificationService] Error enviando Chatwoot:', error);
+      return { success: false, error: error.message || 'Error al enviar mensaje por Chatwoot' };
     }
   }
 }
