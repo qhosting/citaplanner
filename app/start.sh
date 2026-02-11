@@ -1,8 +1,8 @@
 #!/bin/sh
 
-echo "🚀 Iniciando CITAPLANNER (Start Script Modificado)..."
+echo "🚀 Iniciando CITAPLANNER (Easypanel Fix)..."
 
-# Configurar PATH
+# Configurar PATH para incluir node_modules/.bin
 export PATH="$PATH:/app/node_modules/.bin"
 
 # Detectar comando Prisma
@@ -14,38 +14,51 @@ fi
 
 echo "🎯 Usando Prisma: $PRISMA_CMD"
 
-# 1. Generar cliente (siempre seguro de ejecutar)
-echo "📦 Generando cliente Prisma..."
-$PRISMA_CMD generate
-
-# 2. Intentar aplicar migraciones a la BD
-echo "🔄 Sincronizando base de datos (db push)..."
-# Quitamos --force-reset para no borrar datos en prod
-# Usamos --accept-data-loss con precaución (necesario si hay cambios de esquema destructivos)
-$PRISMA_CMD db push --accept-data-loss
-
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR CRÍTICO: Falló prisma db push."
-    echo "⚠️  La aplicación intentará iniciar, pero pueden faltar tablas."
-else
-    echo "✅ Base de datos sincronizada correctamente."
-    
-    # 3. Seed de datos (solo si la DB se sincronizó bien)
-    echo "🌱 Ejecutando seed..."
-    $PRISMA_CMD db seed || echo "⚠️  Seed falló o ya existen datos."
-fi
-
-# 4. Verificar existencia de server.js
-if [ ! -f "server.js" ] && [ ! -f "/app/server.js" ]; then
-    echo "❌ ERROR: server.js no encontrado."
+# 1. Verificar variables de entorno críticas
+if [ -z "$DATABASE_URL" ]; then
+    echo "❌ ERROR FATAL: DATABASE_URL no está definida."
     exit 1
 fi
 
-# 5. Iniciar Servidor
-echo "🚀 Iniciando servidor Node.js..."
+# 2. Generar cliente
+echo "📦 Generando cliente Prisma..."
+$PRISMA_CMD generate
+
+# 3. Intentar Sincronizar Base de Datos (DB Push)
+echo "🔄 Intentando sincronizar base de datos (db push)..."
+$PRISMA_CMD db push --accept-data-loss
+
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Falló db push. Intentando migración..."
+    # Fallback: intentar migrate deploy si db push falla (útil si hay migraciones pendientes)
+    $PRISMA_CMD migrate deploy || echo "❌ Falló migrate deploy también."
+else
+    echo "✅ Base de datos sincronizada correctamente."
+    
+    # 4. Seed de datos (solo si la sincronización fue exitosa)
+    # Intentamos ejecutar el seed definido en package.json o fallback directo
+    echo "🌱 Ejecutando seed..."
+    if grep -q '"seed":' package.json; then
+        npm run seed || echo "⚠️  Seed falló (posiblemente datos ya existentes)."
+    else
+        $PRISMA_CMD db seed || echo "⚠️  Prisma seed falló."
+    fi
+fi
+
+# 5. Ejecutar script de Superadmin si existe
+if [ -f "scripts/create-superadmin-auto.ts" ]; then
+    echo "👤 Intentando crear Superadmin por defecto..."
+    npx tsx scripts/create-superadmin-auto.ts || echo "⚠️  No se pudo crear superadmin auto."
+fi
+
+# 6. Iniciar Servidor
+echo "🚀 Iniciando servidor..."
 if [ -f "server.js" ]; then
     exec node server.js
-else
+elif [ -f "/app/server.js" ]; then
     cd /app
     exec node server.js
+else
+    echo "❌ ERROR: server.js no encontrado. Iniciando npm start como fallback."
+    exec npm start
 fi
