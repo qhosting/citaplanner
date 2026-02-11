@@ -1,0 +1,63 @@
+# 🗺️ Roadmap de CitaPlanner (SaaS Multitenant)
+
+## 📌 Estado Actual del Proyecto
+**Versión Actual:** v1.11.0  
+**Última Actualización:** Noviembre 2025  
+**Estado:** Producción (con módulos en desarrollo)
+
+---
+
+## ✅ Módulos Completados (Production Ready)
+
+### 1. Core & Arquitectura
+- [x] **Arquitectura Multi-tenant**: Aislamiento de datos por empresa, gestión de sucursales.
+- [x] **Autenticación**: NextAuth con roles (SUPERADMIN, ADMIN, MANAGER, PROFESSIONAL, RECEPTIONIST, CLIENT).
+- [x] **Base de Datos**: Schema Prisma optimizado con relaciones y enums.
+
+### 2. Gestión Operativa
+- [x] **Gestión de Citas**: CRUD completo, estados, asignaciones (Cliente/Servicio/Profesional).
+- [x] **Gestión de Clientes (CRM)**: Historial, notas, información de contacto.
+- [x] **Inventario**: Control de stock, alertas bajas, reabastecimiento, SKU inteligente.
+- [x] **Sucursales**: Gestión básica de múltiples ubicaciones.
+
+### 3. Comunicación & Notificaciones
+- [x] **Notificaciones Realtime**: WebSockets (Socket.io), Notification Center, Toasts.
+- [x] **Integraciones Básicas**: Configuración preliminar para WhatsApp y Email.
+
+---
+
+## 🚧 En Desarrollo (WIP)
+
+### 📊 Reportes y Analytics (75%)
+- Dashboard visual implementado.
+- **Faltante**: Conexión full a BD para métricas complejas, exportación (PDF/Excel).
+
+### 🏪 Punto de Venta / POS (60%)
+- Interfaz y carrito funcional.
+- **Faltante**: Integración pasarela de pagos (OpenPay), emisión de tickets, gestión de caja.
+
+### 🏢 Gestión Avanzada de Sucursales (50%)
+- Listado y dashboard básico.
+- **Faltante**: Horarios detallados por sucursal, excepciones, configuración fina de permisos por sede.
+
+### 📢 Marketing (40%)
+- Estructura de datos para campañas.
+- **Faltante**: Editor de campañas, automatización de envíos, segmentación.
+
+---
+
+## 🔮 Roadmap Futuro (2026+)
+
+### Q1 2026 - Consolidación Financiera
+- **Facturación Electrónica**: Generación de facturas fiscales.
+- **Gestión de Gastos**: Módulo para registrar egresos operativos.
+- **Nómina Básica**: Cálculo de comisiones para profesionales.
+
+### Q2 2026 - Expansión Móvil & IA
+- **App Nativa (React Native)**: Para profesionales y administradores.
+- **IA Assistant**: Sugerencias de horarios, predicción de cancelaciones.
+- **API Pública**: Para integraciones de terceros.
+
+### Q3 2026 - Ecosistema
+- **Marketplace de Servicios**: Portal público para búsqueda de profesionales.
+- **Integraciones**: Zapier, Google Calendar (bidireccional), Stripe.

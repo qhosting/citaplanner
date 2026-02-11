@@ -1,0 +1,50 @@
+# 📋 Roadmap de Pendientes (Action Plan)
+
+Este documento detalla las tareas técnicas específicas pendientes para completar los módulos en desarrollo.
+
+## 🔴 Prioridad Alta (Inmediato)
+
+### 1. Finalizar Módulo de Reportes
+- [ ] **Backend**: Implementar queries de agregación en Prisma para:
+    - Ingresos por período (diario/mensual).
+    - Citas por estado y profesional.
+    - Top servicios y clientes.
+- [ ] **Frontend**: Conectar gráficos (Recharts) con endpoints de datos reales.
+- [ ] **Exportación**: Implementar generación de PDF y CSV para tablas de reportes.
+
+### 2. Completar POS (Punto de Venta)
+- [ ] **Integración Pagos**: Conectar API de OpenPay para cobros con tarjeta.
+- [ ] **Tickets**: Generar diseño de ticket térmico y funcionalidad de impresión.
+- [ ] **Caja**: Implementar apertura y cierre de caja (corte de caja).
+- [ ] **Stock Realtime**: Descontar inventario automáticamente al completar venta.
+
+### 3. Native App Launchpad
+- [ ] Validar redirección correcta a `/cobrador-app`.
+- [ ] Verificar configuración de `manifest-cobrador.json`.
+
+---
+
+## 🟡 Prioridad Media (Próximo Sprint)
+
+### 1. Gestión de Sucursales
+- [ ] **Horarios**: Implementar interfaz para definir horarios de operación por sucursal.
+- [ ] **Excepciones**: Manejo de días festivos y cierres temporales.
+- [ ] **Personal**: Interfaz avanzada para asignación de staff a múltiples sedes.
+
+### 2. Marketing & Comunicaciones
+- [ ] **Campañas**: Crear UI para redactar mensajes masivos (SMS/WhatsApp).
+- [ ] **Templates**: CRUD de plantillas de mensajes con variables (ej. `{{nombre_cliente}}`).
+- [ ] **Triggers**: Configurar disparadores automáticos (ej. "Recordatorio 24h antes").
+
+---
+
+## 🟢 Prioridad Baja / Mejoras (Backlog)
+
+### 1. Optimizaciones Técnicas
+- [ ] **Performance**: Auditar renders innecesarios en el calendario.
+- [ ] **Tests**: Aumentar cobertura de tests E2E para flujos críticos (Reserva -> Pago).
+- [ ] **Refactor**: Revisar y limpiar código legacy en `migrate-to-multitenancy.ts`.
+
+### 2. UX/UI
+- [ ] **Onboarding**: Crear tour guiado para nuevos tenants.
+- [ ] **Dark Mode**: Refinar contrastes en vistas de administración.
