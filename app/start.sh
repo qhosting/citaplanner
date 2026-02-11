@@ -1,8 +1,8 @@
 #!/bin/sh
 
-echo "🚀 Iniciando CITAPLANNER (Easypanel Fix)..."
+echo "🚀 Iniciando CITAPLANNER (Easypanel Fix v3)..."
 
-# Configurar PATH para incluir node_modules/.bin
+# Configurar PATH
 export PATH="$PATH:/app/node_modules/.bin"
 
 # Detectar comando Prisma
@@ -14,7 +14,7 @@ fi
 
 echo "🎯 Usando Prisma: $PRISMA_CMD"
 
-# 1. Verificar variables de entorno críticas
+# 1. Verificar variable de BD
 if [ -z "$DATABASE_URL" ]; then
     echo "❌ ERROR FATAL: DATABASE_URL no está definida."
     exit 1
@@ -24,31 +24,36 @@ fi
 echo "📦 Generando cliente Prisma..."
 $PRISMA_CMD generate
 
-# 3. Intentar Sincronizar Base de Datos (DB Push)
-echo "🔄 Intentando sincronizar base de datos (db push)..."
+# 3. Intentar resolver migraciones fallidas
+echo "🔧 Intentando marcar migraciones fallidas como resueltas..."
+# Si hay migraciones fallidas, intentamos marcarlas como rolled back para reintentar
+$PRISMA_CMD migrate resolve --applied "20251007193712_icalendar_integration" || echo "⚠️ No se pudo resolver migración específica (puede que no exista)."
+
+# 4. Sincronización Forzada (DB Push)
+# Usamos --accept-data-loss para forzar el estado del esquema actual sobre la BD
+echo "🔄 Forzando sincronización de esquema (db push)..."
 $PRISMA_CMD db push --accept-data-loss
 
 if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Falló db push. Intentando migración..."
-    # Fallback: intentar migrate deploy si db push falla (útil si hay migraciones pendientes)
-    $PRISMA_CMD migrate deploy || echo "❌ Falló migrate deploy también."
+    echo "❌ ERROR: Falló db push."
+    # Si falla push, intentamos migrate deploy como último recurso
+    echo "🔄 Intentando migrate deploy..."
+    $PRISMA_CMD migrate deploy || echo "❌ Falló migrate deploy. La BD puede estar inconsistente."
 else
-    echo "✅ Base de datos sincronizada correctamente."
+    echo "✅ Base de datos sincronizada."
     
-    # 4. Seed de datos (solo si la sincronización fue exitosa)
-    # Intentamos ejecutar el seed definido en package.json o fallback directo
+    # 5. Seed y Superadmin (Solo si la BD está sana)
     echo "🌱 Ejecutando seed..."
     if grep -q '"seed":' package.json; then
-        npm run seed || echo "⚠️  Seed falló (posiblemente datos ya existentes)."
+        npm run seed || echo "⚠️  Seed falló o datos existentes."
     else
         $PRISMA_CMD db seed || echo "⚠️  Prisma seed falló."
     fi
-fi
 
-# 5. Ejecutar script de Superadmin si existe
-if [ -f "scripts/create-superadmin-auto.ts" ]; then
-    echo "👤 Intentando crear Superadmin por defecto..."
-    npx tsx scripts/create-superadmin-auto.ts || echo "⚠️  No se pudo crear superadmin auto."
+    echo "👤 Creando Superadmin..."
+    if [ -f "scripts/create-superadmin-auto.ts" ]; then
+        npx tsx scripts/create-superadmin-auto.ts || echo "⚠️  Script superadmin falló."
+    fi
 fi
 
 # 6. Iniciar Servidor
@@ -59,6 +64,5 @@ elif [ -f "/app/server.js" ]; then
     cd /app
     exec node server.js
 else
-    echo "❌ ERROR: server.js no encontrado. Iniciando npm start como fallback."
     exec npm start
 fi
